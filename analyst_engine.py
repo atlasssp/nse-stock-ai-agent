@@ -46,6 +46,22 @@ RENAMED_STOCKS = {
     "ZOMATO.NS": "ETERNAL.NS",
     "TATAMOTORS": "TMCV.NS",
     "TATAMOTORS.NS": "TMCV.NS",
+    "RELIANCE": "RELIANCE.NS",
+    "RELIANCE.NS": "RELIANCE.NS",
+    "TCS": "TCS.NS",
+    "TCS.NS": "TCS.NS",
+    "INFY": "INFY.NS",
+    "INFY.NS": "INFY.NS",
+    "HDFCBANK": "HDFCBANK.NS",
+    "HDFCBANK.NS": "HDFCBANK.NS",
+    "ICICIBANK": "ICICIBANK.NS",
+    "ICICIBANK.NS": "ICICIBANK.NS",
+    "SBIN": "SBIN.NS",
+    "SBIN.NS": "SBIN.NS",
+    "STLTECH": "STLTECH.NS",
+    "STLTECH.NS": "STLTECH.NS",
+    "SUZLON": "SUZLON.NS",
+    "SUZLON.NS": "SUZLON.NS"
 }
 
 # Curated Knowledge Base for Top Indian Equities (Business Profile & Moat Data)
@@ -579,7 +595,6 @@ def fetch_company_intelligence(symbol: str):
     except Exception as e:
         print(f"yfinance info fetch warning for {formatted_sym}: {e}")
 
-    # Read curated knowledge base if available, or generate dynamic fallback
     kb = COMPANY_KNOWLEDGE_BASE.get(clean_ticker, {})
 
     company_name = kb.get("name") or info.get("longName") or info.get("shortName") or clean_ticker
@@ -604,7 +619,6 @@ def fetch_company_intelligence(symbol: str):
     revenue_streams = kb.get("revenue_streams") or ["Primary Operating Revenue (75%)", "Services & Enterprise Contracts (20%)", "Other Investments (5%)"]
     geographic_presence = kb.get("geographic_presence") or "Primary domestic operations across India with global enterprise client coverage."
 
-    # Operations Data
     segments = kb.get("segments") or [
         {"name": "Core Operating Segment", "share": "70%", "description": "Primary business revenue driver."},
         {"name": "Services & Solutions", "share": "30%", "description": "Enterprise digital and consulting solutions."}
@@ -615,7 +629,6 @@ def fetch_company_intelligence(symbol: str):
     growth_drivers = kb.get("growth_drivers") or ["Rising domestic demand", "Digital transformation contracts", "Expansion into high-margin segments"]
     business_risks = kb.get("business_risks") or ["Macroeconomic slowdown", "Raw material/wage inflation", "Regulatory policy updates"]
 
-    # Financial Ratios & Metrics
     total_rev = info.get("totalRevenue")
     rev_str = f"₹{round(total_rev / 1e7, 0):,.0f} Cr" if total_rev else "₹45,000+ Cr"
     
@@ -642,7 +655,6 @@ def fetch_company_intelligence(symbol: str):
 
     ai_financial_summary = f"{company_name} maintains healthy balance sheet liquidity with revenue growth at {rev_growth_str} and P/E ratio trading at {pe_str}. Robust return on equity ({roe_str}) supports current valuation."
 
-    # Recent News & Corporate Events
     raw_news = fetch_stock_news(clean_ticker)
     news_events = []
     for item in raw_news:
@@ -654,7 +666,6 @@ def fetch_company_intelligence(symbol: str):
             "sentiment": "Bullish" if item['score'] > 0 else ("Bearish" if item['score'] < 0 else "Neutral")
         })
 
-    # AI Impact Analysis Engine
     impact_analysis = {
         "bullish_catalysts": [
             f"Strong positioning in {sector} driving earnings resilience",
@@ -670,7 +681,6 @@ def fetch_company_intelligence(symbol: str):
         "ai_risk_level": "Moderate Risk"
     }
 
-    # AI Investment & Trading Summary
     ai_summary = {
         "what_is_company": f"{company_name} ({clean_ticker}) is a premier player in the {sector} industry with an established market presence.",
         "current_developments": f"The company is experiencing active trading interest driven by recent market announcements, key sector catalysts, and institutional buying.",
@@ -713,6 +723,119 @@ def fetch_company_intelligence(symbol: str):
         "recent_events": news_events,
         "impact_analysis": impact_analysis,
         "ai_investment_summary": ai_summary
+    }
+
+def generate_claude_finance_response(user_message: str, symbol: str = "RELIANCE", history=None):
+    """
+    Claude Finance AI Market Analyst Response Generator.
+    Acts as an institutional Senior Market Expert providing real-time, context-aware stock market advice,
+    intraday trade setups, technical pattern breakdowns, and risk management strategies.
+    """
+    report = generate_senior_researcher_report(symbol, "18m")
+    clean_sym = report.get("symbol", symbol)
+    c_price = report.get("current_price", 0.0)
+    setup = report.get("intraday_setup", {})
+    tech = report.get("technicals", {})
+    pivots = report.get("pivots", {}).get("standard", {})
+    predictive = report.get("predictive", {})
+    ci = report.get("company_intelligence", {})
+    
+    msg_lower = user_message.lower()
+
+    # Intent Detection & Response Synthesis
+    if "recommendation" in msg_lower or "trade" in msg_lower or "buy" in msg_lower or "sell" in msg_lower or "setup" in msg_lower or "bias" in msg_lower:
+        reply = f"""### Senior Analyst Action Plan for **{clean_sym}** (NSE)
+
+As an institutional market strategist, here is my quantitative trade blueprint for **{clean_sym}** (Current Price: **₹{c_price:,.2f}**):
+
+- **Intraday Bias**: **{setup.get('bias', 'NEUTRAL')}**
+- **Recommended Action**: `{setup.get('action', 'SCALP RANGE')}`
+- **Execution Entry Range**: **{setup.get('entry_range', '₹0 - ₹0')}**
+- **Target 1**: **₹{setup.get('target1', 0.0)}** | **Target 2**: **₹{setup.get('target2', 0.0)}**
+- **Strict Stop-Loss**: **₹{setup.get('stop_loss', 0.0)}**
+- **Risk-to-Reward (R:R)**: **{setup.get('rr_ratio', '1:2.0')}**
+- **Monte Carlo Target Hit Probability**: **{predictive.get('probabilities', {}).get('target_hit', 85)}%**
+
+#### Market Analyst Rationale:
+{chr(10).join(['- ' + r for r in setup.get('reasons', ['Technical indicators aligned near pivot support.'])])}
+
+> **Senior Expert Tip**: Execute orders strictly within the entry zone. Avoid chasing market price gaps during high open-bell volatility."""
+
+    elif "risk" in msg_lower or "stop loss" in msg_lower or "position" in msg_lower or "hedge" in msg_lower:
+        reply = f"""### Senior Risk Management Guidance for **{clean_sym}**
+
+Managing risk is the cornerstone of profitable intraday trading. For **{clean_sym}** at **₹{c_price:,.2f}**:
+
+1. **ATR-Based Stop-Loss**: Set a hard stop at **₹{setup.get('stop_loss', 0.0)}** based on 14-day ATR volatility (₹{tech.get('atr', 15.0):.2f}).
+2. **Capital Protection Rule**: Never risk more than **1.5% to 2.0%** of your total trading capital on a single intraday trade.
+3. **Risk-to-Reward Standard**: Current trade setup offers an attractive **{setup.get('rr_ratio', '1:2.0')}** R:R ratio.
+4. **Position Sizing Equation**:
+   `Max Position Size = (Total Risk Capital) / (Entry Price - Stop Loss Price)`
+
+> **Analyst Advice**: If the stock hits Target 1 (₹{setup.get('target1', 0.0)}), trail your stop-loss up to your entry price to secure a risk-free position for Target 2."""
+
+    elif "indicator" in msg_lower or "rsi" in msg_lower or "macd" in msg_lower or "ema" in msg_lower or "pivot" in msg_lower:
+        reply = f"""### Quantitative Technical Analysis: **{clean_sym}**
+
+Here is the quantitative signal breakdown for **{clean_sym}** at **₹{c_price:,.2f}**:
+
+- **Relative Strength Index (RSI 14)**: **{tech.get('rsi', 50.0):.1f}** ({'Healthy bullish momentum' if tech.get('rsi', 50) > 55 else 'Consolidation zone'})
+- **Moving Average Alignment**: 20 EMA: **₹{tech.get('ema20', c_price):,.2f}** | 50 EMA: **₹{tech.get('ema50', c_price):,.2f}** | 200 EMA: **₹{tech.get('ema200', c_price):,.2f}**
+- **MACD (12, 26, 9)**: Histogram reading **{tech.get('macd', 0.0):.2f}** vs Signal **{tech.get('macd_signal', 0.0):.2f}**
+- **Volume Ratio**: **{tech.get('vol_ratio', 1.0):.1f}x** of 20-day average volume
+- **Standard Pivot Point (P)**: **₹{pivots.get('pivot', c_price)}** | Resistance R1: **₹{pivots.get('r1', c_price)}** | Support S1: **₹{pivots.get('s1', c_price)}**
+
+> **Technical Outlook**: Trading above 20 EMA with positive RSI slope indicates institutional buying support."""
+
+    elif "company" in msg_lower or "business" in msg_lower or "segment" in msg_lower or "moat" in msg_lower or "fundamental" in msg_lower:
+        reply = f"""### Senior Research Analyst Profile: **{ci.get('company_name', clean_sym)}**
+
+**Overview**: {ci.get('description', 'Leading Indian enterprise.')}
+
+- **Sector / Industry**: {ci.get('sector', 'NSE')} | {ci.get('industry', 'Equity')}
+- **Market Capitalization**: **{ci.get('market_cap', 'N/A')}**
+- **Economic Moat**: {ci.get('operations', {}).get('moat', 'Strong market scale and distribution network.')}
+- **Financial Ratios**: P/E: **{ci.get('financials', {}).get('pe_ratio', '24x')}** | ROE: **{ci.get('financials', {}).get('roe', '18%')}** | Revenue Growth: **{ci.get('financials', {}).get('revenue_growth', '+8%')}**
+- **Growth Drivers**: {', '.join(ci.get('operations', {}).get('growth_drivers', ['Sector expansion', 'Digital transformation'])[:2])}
+
+> **Fundamental Assessment**: Strong balance sheet liquidity with robust Return on Equity supports current market valuation."""
+
+    elif "news" in msg_lower or "catalyst" in msg_lower or "event" in msg_lower:
+        news_list = report.get("news", [])
+        top_news = news_list[0]['title'] if news_list else f"Recent market coverage for {clean_sym}."
+        reply = f"""### News & Catalyst Intelligence for **{clean_sym}**
+
+**Latest Headline Catalyst**:
+> *"{top_news}"*
+
+- **Sentiment Impact**: **{'Positive Catalyst' if report.get('explainable_ai', {}).get('factors', [{},{}])[1].get('impact') == 'Positive' else 'Neutral Market Sentiment'}**
+- **News Score Attributed**: Aggregated headline sentiment index supporting short-term trader bias.
+- **Market Event Alert**: Volume ratio trading at **{tech.get('vol_ratio', 1.0):.1f}x** average volume.
+
+> **Analyst View**: Catalysts are actively driving intraday momentum. Always combine headline sentiment with technical pivot breakouts."""
+
+    else:
+        reply = f"""### Senior Market Researcher Guidance for **{clean_sym}** (₹{c_price:,.2f})
+
+Greetings trader! I am your Senior Financial Expert & Market Researcher. Here is my current assessment for **{clean_sym}**:
+
+1. **Current Intraday Setup**: **{setup.get('bias', 'NEUTRAL')}** with recommended action `{setup.get('action', 'SCALP')}`.
+2. **Key Levels to Monitor**:
+   - **Entry Range**: ₹{setup.get('entry_min', c_price)} - ₹{setup.get('entry_max', c_price)}
+   - **Target 1**: ₹{setup.get('target1', c_price)}
+   - **Stop-Loss**: ₹{setup.get('stop_loss', c_price)}
+3. **Probability Forecast**: Monte Carlo 500-path simulation indicates a **{predictive.get('probabilities', {}).get('target_hit', 85)}% target hit probability**.
+
+Feel free to ask me about:
+- Detailed intraday trade execution strategy
+- Technical indicators (RSI, MACD, Pivots, EMA)
+- Stop-loss & position sizing calculations
+- Business operations, moat, and financial metrics"""
+
+    return {
+        "reply": reply,
+        "symbol": clean_sym,
+        "timestamp": datetime.now().strftime("%H:%M:%S")
     }
 
 def generate_explainable_ai_breakdown(reasons, news_score, rsi, macd, vol_ratio, trend_18m, patterns):
@@ -1288,8 +1411,7 @@ def record_outcome_feedback(rec_id: int, outcome: str, pchange: float = 0.0):
     return False
 
 if __name__ == "__main__":
-    print("Testing Company Intelligence Module for RELIANCE...")
-    ci = fetch_company_intelligence("RELIANCE")
-    print("Company:", ci.get("company_name"))
-    print("Market Cap:", ci.get("market_cap"))
-    print("Segments Count:", len(ci.get("operations", {}).get("segments", [])))
+    print("Testing Claude Finance Chatbot Generator for RELIANCE...")
+    res = generate_claude_finance_response("What is your trade recommendation for RELIANCE today?", "RELIANCE")
+    print("Reply Snippet:")
+    print(res.get("reply", "")[:300])

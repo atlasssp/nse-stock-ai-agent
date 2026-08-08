@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Stock Market Intraday Trading Assistant | NSE Copilot</title>
-  <meta name="description" content="Institutional-grade AI-powered stock market analysis, real-time news sentiment intelligence, Monte Carlo price forecasting, Explainable AI factor breakdown, Company Intelligence, and intraday trading assistant.">
+  <meta name="description" content="Institutional-grade AI-powered stock market analysis, real-time news sentiment intelligence, Monte Carlo price forecasting, Explainable AI factor breakdown, Company Intelligence, Claude Finance Chatbot, and intraday trading assistant.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -56,6 +56,10 @@
     <button class="nav-tab" data-tab="company">
       <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>
       Company Intelligence
+    </button>
+    <button class="nav-tab" data-tab="chat">
+      <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/></svg>
+      Claude AI Analyst
     </button>
     <button class="nav-tab" data-tab="scanner">
       <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>
@@ -258,7 +262,6 @@
     <!-- VIEW 2: COMPANY INTELLIGENCE VIEW -->
     <main id="viewCompany" class="tab-view">
       <div class="company-intelligence-grid">
-        <!-- 1. Company Overview Header Card -->
         <div class="ci-card ci-header-banner">
           <div class="ci-banner-main">
             <div>
@@ -277,7 +280,6 @@
           </div>
         </div>
 
-        <!-- 2. AI Executive Investment & Trading Summary -->
         <div class="ci-card ci-summary-card">
           <div class="card-header-flex">
             <h2>AI Executive Investment & Trading Summary</h2>
@@ -308,7 +310,6 @@
           </div>
         </div>
 
-        <!-- 3. Business Operations & Competitive Moat -->
         <div class="ci-card">
           <h2>Business Operations & Competitive Moat</h2>
 
@@ -334,7 +335,6 @@
           </div>
         </div>
 
-        <!-- 4. Earnings & Financial Insights -->
         <div class="ci-card">
           <h2>Earnings & Financial Performance Snapshot</h2>
 
@@ -379,7 +379,6 @@
           </div>
         </div>
 
-        <!-- 5. AI Impact Analysis Engine & Recent News Timeline -->
         <div class="ci-card wide">
           <div class="impact-grid">
             <div class="imp-column">
@@ -418,7 +417,47 @@
       </div>
     </main>
 
-    <!-- VIEW 3: OPPORTUNITY SCANNER VIEW -->
+    <!-- VIEW 3: CLAUDE AI ANALYST CHATBOT VIEW -->
+    <main id="viewChat" class="tab-view">
+      <div class="chat-main-container">
+        <div class="chat-header-strip">
+          <div class="chat-analyst-info">
+            <div class="analyst-avatar">
+              <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+            </div>
+            <div>
+              <h2>Claude Finance AI Market Analyst</h2>
+              <p>Senior Financial Expert & Intraday Quantitative Strategist</p>
+            </div>
+          </div>
+          <div class="active-stock-pill" id="chatActiveStockPill">Context: RELIANCE.NS</div>
+        </div>
+
+        <div class="quick-prompts-bar">
+          <span class="prompt-chip" onclick="sendQuickPrompt('What is your intraday trade recommendation for this stock today?')">🎯 Trade Recommendation</span>
+          <span class="prompt-chip" onclick="sendQuickPrompt('What is the stop-loss and risk management strategy for this setup?')">🛡️ Risk & Stop Loss</span>
+          <span class="prompt-chip" onclick="sendQuickPrompt('Explain the RSI, MACD, and EMA technical signals for this stock.')">📊 Technical Breakdown</span>
+          <span class="prompt-chip" onclick="sendQuickPrompt('What are the key business drivers and moat for this company?')">🏢 Company & Moat</span>
+          <span class="prompt-chip" onclick="sendQuickPrompt('How are recent news headlines affecting the stock sentiment?')">📰 Catalyst Impact</span>
+        </div>
+
+        <div id="chatMessages" class="chat-messages-box">
+          <div class="chat-msg assistant">
+            <div class="msg-avatar">AI</div>
+            <div class="msg-content">
+              Welcome trader! I am <strong>Claude Finance AI</strong>, your Senior Market Researcher and quantitative strategist. Select any stock and ask me about intraday setups, target probabilities, risk-to-reward ratios, or fundamental moats!
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-input-container">
+          <input type="text" id="chatInput" placeholder="Ask Claude Finance Analyst about setups, stop-loss, indicators, or market advice..." autocomplete="off">
+          <button id="sendChatBtn" class="primary-btn">Send Query</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- VIEW 4: OPPORTUNITY SCANNER VIEW -->
     <main id="viewScanner" class="tab-view">
       <div class="scanner-container">
         <div class="scanner-header-card">
@@ -506,7 +545,7 @@
       </div>
     </main>
 
-    <!-- VIEW 4: PREDICTIVE ANALYTICS & PATTERNS VIEW -->
+    <!-- VIEW 5: PREDICTIVE ANALYTICS & PATTERNS VIEW -->
     <main id="viewPredictive" class="tab-view">
       <div class="predictive-grid">
         <div class="predictive-card wide">
@@ -571,7 +610,7 @@
       </div>
     </main>
 
-    <!-- VIEW 5: AI ACCURACY TRACKER & LEARNING VIEW -->
+    <!-- VIEW 6: AI ACCURACY TRACKER & LEARNING VIEW -->
     <main id="viewAccuracy" class="tab-view">
       <div class="accuracy-grid">
         <div class="metrics-row">
@@ -630,6 +669,37 @@
       </div>
     </main>
 
+  </div>
+
+  <!-- FLOATING CHATBOT WIDGET IN BOTTOM RIGHT -->
+  <div class="floating-chat-widget">
+    <button id="toggleFloatingChatBtn" class="floating-chat-trigger" title="Ask Senior Analyst Advice">
+      <span class="pulse-ring"></span>
+      <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/></svg>
+      <span>Ask Claude AI</span>
+    </button>
+
+    <div id="floatingChatDrawer" class="chat-drawer-modal">
+      <div class="drawer-header">
+        <div class="drawer-title">
+          <span class="pulse-dot"></span>
+          <h3>Claude Senior Finance Analyst</h3>
+        </div>
+        <button id="closeChatDrawerBtn" class="close-btn">&times;</button>
+      </div>
+
+      <div id="drawerMessages" class="drawer-messages-box">
+        <div class="chat-msg assistant">
+          <div class="msg-avatar">AI</div>
+          <div class="msg-content">Hello! Ask me any senior analyst advice on <strong id="drawerActiveSym">RELIANCE</strong> setups, stop-loss, or market targets.</div>
+        </div>
+      </div>
+
+      <div class="drawer-input-row">
+        <input type="text" id="drawerChatInput" placeholder="Ask expert advice..." autocomplete="off">
+        <button id="sendDrawerChatBtn" class="primary-btn sm">Send</button>
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>

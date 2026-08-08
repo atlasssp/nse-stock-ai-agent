@@ -11,6 +11,7 @@ from analyst_engine import (
     generate_senior_researcher_report,
     fetch_stock_news,
     fetch_company_intelligence,
+    generate_claude_finance_response,
     search_indian_stocks,
     run_market_opportunity_scanner,
     get_accuracy_stats,
@@ -168,7 +169,23 @@ class StockMarketHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps(data_dict).encode('utf-8'))
 
-        if path == "/api/accuracy/feedback":
+        if path == "/api/chat":
+            try:
+                content_length = int(self.headers.get('Content-Length', 0))
+                post_data = self.rfile.read(content_length)
+                payload = json.loads(post_data.decode('utf-8'))
+
+                user_msg = str(payload.get("message", ""))
+                symbol = str(payload.get("symbol", "RELIANCE"))
+                history = payload.get("history", [])
+
+                chat_response = generate_claude_finance_response(user_msg, symbol, history)
+                send_json(chat_response)
+            except Exception as e:
+                send_json({"error": str(e)}, 500)
+            return
+
+        elif path == "/api/accuracy/feedback":
             try:
                 content_length = int(self.headers.get('Content-Length', 0))
                 post_data = self.rfile.read(content_length)

@@ -11,6 +11,7 @@ const state = {
   scannerData: [],
   accuracyData: null,
   activeTab: "copilot",
+  chatHistory: [],
   watchlist: JSON.parse(localStorage.getItem("nse_watchlist")) || [
     { symbol: "RELIANCE", name: "Reliance Industries" },
     { symbol: "TCS", name: "Tata Consultancy Services" },
@@ -115,6 +116,21 @@ const elements = {
   ciMediumTermOutlook: document.getElementById("ciMediumTermOutlook"),
   ciNewsTimeline: document.getElementById("ciNewsTimeline"),
 
+  // Claude AI Analyst Chat Elements
+  chatActiveStockPill: document.getElementById("chatActiveStockPill"),
+  chatMessages: document.getElementById("chatMessages"),
+  chatInput: document.getElementById("chatInput"),
+  sendChatBtn: document.getElementById("sendChatBtn"),
+
+  // Floating Chatbot Drawer Elements
+  toggleFloatingChatBtn: document.getElementById("toggleFloatingChatBtn"),
+  floatingChatDrawer: document.getElementById("floatingChatDrawer"),
+  closeChatDrawerBtn: document.getElementById("closeChatDrawerBtn"),
+  drawerActiveSym: document.getElementById("drawerActiveSym"),
+  drawerMessages: document.getElementById("drawerMessages"),
+  drawerChatInput: document.getElementById("drawerChatInput"),
+  sendDrawerChatBtn: document.getElementById("sendDrawerChatBtn"),
+
   // Scanner View Elements
   scanSector: document.getElementById("scanSector"),
   scanCap: document.getElementById("scanCap"),
@@ -188,6 +204,9 @@ function setupNavigationTabs() {
         if (state.stockData && state.stockData.company_intelligence) {
           renderCompanyIntelligence(state.stockData.company_intelligence);
         }
+      } else if (targetTab === "chat") {
+        document.getElementById("viewChat").classList.add("active");
+        elements.chatActiveStockPill.textContent = `Context: ${state.currentSymbol}.NS`;
       } else if (targetTab === "scanner") {
         document.getElementById("viewScanner").classList.add("active");
         if (state.scannerData.length === 0) runScanner();
@@ -259,7 +278,10 @@ function selectStock(sym) {
   state.currentSymbol = sym;
   renderWatchlist();
   
-  if (state.activeTab !== "company") {
+  elements.chatActiveStockPill.textContent = `Context: ${sym}.NS`;
+  elements.drawerActiveSym.textContent = sym;
+
+  if (state.activeTab !== "company" && state.activeTab !== "chat") {
     const copilotTab = document.querySelector('.nav-tab[data-tab="copilot"]');
     if (copilotTab) copilotTab.click();
   }
@@ -325,7 +347,6 @@ function renderStockOverview(data) {
 function renderCompanyIntelligence(ci) {
   if (!ci) return;
 
-  // Header Banner
   elements.ciCompanyName.textContent = `${ci.company_name} (${ci.symbol})`;
   elements.ciMarketCap.textContent = ci.market_cap;
   elements.ciSectorIndustry.textContent = `${ci.sector} | ${ci.industry}`;
@@ -334,7 +355,6 @@ function renderCompanyIntelligence(ci) {
   elements.ciEmployees.textContent = ci.employees;
   elements.ciGeographic.textContent = ci.geographic_presence;
 
-  // Executive Investment Summary
   const sum = ci.ai_investment_summary || {};
   elements.sumWhatCompany.textContent = sum.what_is_company || ci.description;
   elements.sumCurrentDevelopments.textContent = sum.current_developments || "Monitoring recent earnings reports and management announcements.";
@@ -342,7 +362,6 @@ function renderCompanyIntelligence(ci) {
   elements.sumBullishSignal.textContent = sum.strongest_bullish_signal || "Positive catalyst momentum.";
   elements.sumBearishSignal.textContent = sum.strongest_bearish_signal || "Watchful of broad market headwinds.";
 
-  // Operations & Moat
   const ops = ci.operations || {};
   elements.ciSegmentsList.innerHTML = (ops.segments || []).map(s => `
     <div class="seg-item">
@@ -365,7 +384,6 @@ function renderCompanyIntelligence(ci) {
     <span class="tag-badge competitor">${c}</span>
   `).join('');
 
-  // Financials Snapshot
   const fin = ci.financials || {};
   elements.finTotalRev.textContent = fin.total_revenue || "N/A";
   elements.finRevGrowth.textContent = fin.revenue_growth || "+0%";
@@ -377,7 +395,6 @@ function renderCompanyIntelligence(ci) {
   elements.finDivYield.textContent = fin.dividend_yield || "N/A";
   elements.finAISummary.textContent = fin.ai_financial_summary || "Financial performance metrics indicate stable operating capital.";
 
-  // Impact Analysis & Catalysts
   const imp = ci.impact_analysis || {};
   elements.ciBullishCatalysts.innerHTML = (imp.bullish_catalysts || []).map(c => `<li>${c}</li>`).join('');
   elements.ciBearishRisks.innerHTML = (imp.bearish_risks || []).map(r => `<li>${r}</li>`).join('');
@@ -385,7 +402,6 @@ function renderCompanyIntelligence(ci) {
   elements.ciShortTermImpact.textContent = imp.short_term_intraday_impact || "Short-term momentum aligned with technical support levels.";
   elements.ciMediumTermOutlook.textContent = imp.medium_term_outlook || "Medium-term structural trend supported by industry expansion.";
 
-  // News Timeline
   const newsList = ci.recent_events || [];
   elements.ciNewsTimeline.innerHTML = newsList.map(n => `
     <div class="timeline-item">
@@ -397,6 +413,98 @@ function renderCompanyIntelligence(ci) {
       <div class="t-summary">${n.summary}</div>
     </div>
   `).join('');
+}
+
+// Chatbot Logic
+async function sendChatMessage(msgText, isDrawer = false) {
+  const text = msgText.trim();
+  if (!text) return;
+
+  const targetBox = isDrawer ? elements.drawerMessages : elements.chatMessages;
+  const inputElem = isDrawer ? elements.drawerChatInput : elements.chatInput;
+
+  // Clear input
+  inputElem.value = "";
+
+  // Append user message
+  targetBox.innerHTML += `
+    <div class="chat-msg user">
+      <div class="msg-avatar">YOU</div>
+      <div class="msg-content">${escapeHTML(text)}</div>
+    </div>
+  `;
+  targetBox.scrollTop = targetBox.scrollHeight;
+
+  // Append loading indicator
+  const loadingId = "load_" + Date.now();
+  targetBox.innerHTML += `
+    <div class="chat-msg assistant" id="${loadingId}">
+      <div class="msg-avatar">AI</div>
+      <div class="msg-content"><div class="spinner"></div> Senior analyst is analyzing market data...</div>
+    </div>
+  `;
+  targetBox.scrollTop = targetBox.scrollHeight;
+
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: text,
+        symbol: state.currentSymbol,
+        history: state.chatHistory
+      })
+    });
+    const data = await res.json();
+
+    const loadingElem = document.getElementById(loadingId);
+    if (loadingElem) loadingElem.remove();
+
+    if (data.reply) {
+      targetBox.innerHTML += `
+        <div class="chat-msg assistant">
+          <div class="msg-avatar">AI</div>
+          <div class="msg-content">${formatMarkdown(data.reply)}</div>
+        </div>
+      `;
+      state.chatHistory.push({ user: text, assistant: data.reply });
+    } else if (data.error) {
+      targetBox.innerHTML += `
+        <div class="chat-msg assistant">
+          <div class="msg-avatar">AI</div>
+          <div class="msg-content red-text">Error: ${data.error}</div>
+        </div>
+      `;
+    }
+  } catch (err) {
+    console.error("Chat error:", err);
+  } finally {
+    targetBox.scrollTop = targetBox.scrollHeight;
+  }
+}
+
+function sendQuickPrompt(promptText) {
+  // If not on chat tab, switch to chat tab
+  const chatTab = document.querySelector('.nav-tab[data-tab="chat"]');
+  if (chatTab) chatTab.click();
+  sendChatMessage(promptText, false);
+}
+
+function formatMarkdown(text) {
+  if (!text) return "";
+  let formatted = text
+    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+    .replace(/^#### (.*$)/gim, '<h4>$1</h4>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`(.*?)`/g, '<code>$1</code>')
+    .replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>')
+    .replace(/^- (.*$)/gim, '• $1<br>')
+    .replace(/\n\n/g, '<br><br>');
+  return formatted;
+}
+
+function escapeHTML(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 // Render Canvas Candlestick Chart
@@ -842,6 +950,25 @@ function setupEventListeners() {
   elements.toggleEMA50.addEventListener("change", (e) => { state.toggles.ema50 = e.target.checked; renderCandleChart(state.stockData.candles); });
   elements.toggleEMA200.addEventListener("change", (e) => { state.toggles.ema200 = e.target.checked; renderCandleChart(state.stockData.candles); });
   elements.toggleVolume.addEventListener("change", (e) => { state.toggles.volume = e.target.checked; renderCandleChart(state.stockData.candles); });
+
+  // Chat Handlers
+  elements.sendChatBtn.addEventListener("click", () => sendChatMessage(elements.chatInput.value, false));
+  elements.chatInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") sendChatMessage(elements.chatInput.value, false);
+  });
+
+  elements.sendDrawerChatBtn.addEventListener("click", () => sendChatMessage(elements.drawerChatInput.value, true));
+  elements.drawerChatInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") sendChatMessage(elements.drawerChatInput.value, true);
+  });
+
+  elements.toggleFloatingChatBtn.addEventListener("click", () => {
+    elements.floatingChatDrawer.classList.toggle("active");
+  });
+
+  elements.closeChatDrawerBtn.addEventListener("click", () => {
+    elements.floatingChatDrawer.classList.remove("active");
+  });
 
   elements.runScannerBtn.addEventListener("click", runScanner);
 
