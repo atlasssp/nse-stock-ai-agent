@@ -71,3 +71,4 @@ git push -u origin main
 
 ## 📜 License
 MIT License. Built for Indian Equity & Futures Traders.
+# nse-stock-ai-agent
