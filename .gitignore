@@ -1,0 +1,24 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Binary executables
+cloudflared
+cloudflared-darwin-*
+
+# Environments
+.venv/
+venv/
+ENV/
+env/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+id_ed25519*
+*.pub
+*.log
