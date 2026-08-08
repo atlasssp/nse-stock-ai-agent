@@ -3,34 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NSE Intraday AI Senior Market Researcher & Stock Analyst</title>
-  <meta name="description" content="Institutional-grade AI Senior Market Researcher for Indian Stock Market (NSE/BSE) Intraday Trading & Trend Analysis.">
+  <title>AI Stock Market Intraday Trading Assistant | NSE Copilot</title>
+  <meta name="description" content="Institutional-grade AI-powered stock market analysis, real-time news sentiment intelligence, Monte Carlo price forecasting, Explainable AI factor breakdown, Company Intelligence, and intraday trading assistant.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <!-- Header / Navigation Bar -->
   <header class="app-header">
     <div class="logo-container">
-      <div class="ai-badge">AI AGENT</div>
-      <div class="logo-text">NSE <span>RESEARCHER</span></div>
-      <div class="market-status"><span class="pulse-dot"></span> LIVE NSE AGENT</div>
+      <div class="ai-badge">AI COPILOT</div>
+      <div class="logo-text">ALPHA <span>NSE TRADER</span></div>
+      <div class="market-status"><span class="pulse-dot"></span> LIVE INTRADAY ENGINE</div>
     </div>
     
     <!-- Global Stock Search & Auto-complete -->
     <div class="search-container">
       <div class="search-input-wrapper">
         <svg class="search-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-        <input type="text" id="stockSearchInput" placeholder="Enter NSE Stock Symbol (e.g. RELIANCE, TCS, INFY, TATAMOTORS)..." autocomplete="off">
+        <input type="text" id="stockSearchInput" placeholder="Search Indian Stocks (e.g. RELIANCE, TCS, INFY, HDFCBANK, STLTECH)..." autocomplete="off">
         <button id="searchBtn" class="primary-btn">Analyze Stock</button>
       </div>
       <div id="searchSuggestions" class="suggestions-dropdown"></div>
     </div>
 
     <div class="header-actions">
-      <button id="refreshIndicesBtn" class="icon-btn" title="Refresh Indices Data">
+      <button id="refreshIndicesBtn" class="icon-btn" title="Refresh Live Indices">
         <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
       </button>
       <div class="datetime-display" id="clockDisplay">--:--:--</div>
@@ -47,194 +47,590 @@
     </div>
   </section>
 
-  <!-- Main Terminal Layout -->
-  <main class="terminal-grid">
-    <!-- Left Column: Daily Watchlist & Stock Selector -->
-    <aside class="sidebar-panel">
-      <div class="panel-header">
-        <h3>Daily Watchlist</h3>
-        <button id="addWatchlistBtn" class="sm-btn" title="Add current stock to watchlist">+ Add Stock</button>
+  <!-- Main Navigation Tabs -->
+  <nav class="main-tabs-bar">
+    <button class="nav-tab active" data-tab="copilot">
+      <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+      Copilot Analysis
+    </button>
+    <button class="nav-tab" data-tab="company">
+      <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>
+      Company Intelligence
+    </button>
+    <button class="nav-tab" data-tab="scanner">
+      <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>
+      Opportunity Scanner
+    </button>
+    <button class="nav-tab" data-tab="predictive">
+      <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
+      Predictive Analytics & Patterns
+    </button>
+    <button class="nav-tab" data-tab="accuracy">
+      <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+      AI Accuracy Tracker & Learning
+    </button>
+  </nav>
+
+  <!-- Container Views -->
+  <div class="view-container">
+
+    <!-- VIEW 1: COPILOT ANALYSIS VIEW -->
+    <main id="viewCopilot" class="tab-view active">
+      <div class="terminal-grid">
+        <!-- Left Sidebar: Watchlist & Quick Stats -->
+        <aside class="sidebar-panel">
+          <div class="panel-header">
+            <h3>Daily Watchlist</h3>
+            <button id="addWatchlistBtn" class="sm-btn" title="Add current stock to watchlist">+ Add Stock</button>
+          </div>
+          
+          <div class="watchlist-filters">
+            <span class="filter-chip active" data-filter="all">All</span>
+            <span class="filter-chip" data-filter="nifty50">Top Nifty</span>
+            <span class="filter-chip" data-filter="custom">Custom</span>
+          </div>
+
+          <div class="watchlist-items" id="watchlistItems"></div>
+
+          <!-- Market Event Alerts Feed -->
+          <div class="panel-card event-alerts-card">
+            <h4>Live Market Events</h4>
+            <div id="marketEventsFeed" class="events-feed">
+              <div class="event-item pulse-alert">
+                <span class="event-tag surge">VOLUME SURGE</span>
+                <p>Volume spiking 2.1x over 20-day average for RELIANCE.</p>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Center Panel: Header, Chart, & Intraday Trade Blueprint -->
+        <section class="center-panel">
+          <!-- Stock Header Info Bar -->
+          <div class="stock-header-card" id="stockHeaderCard">
+            <div class="stock-title-section">
+              <div>
+                <h1 id="stockSymbolDisplay">RELIANCE<span>.NS</span></h1>
+                <div id="stockCompanyDisplay" class="sub-text">Reliance Industries Limited | Energy & Conglomerate</div>
+              </div>
+              <div class="stock-price-box">
+                <div id="stockPriceDisplay" class="price-large">₹0.00</div>
+                <div id="stockChangeDisplay" class="price-change neutral">+0.00 (0.00%)</div>
+              </div>
+            </div>
+
+            <div class="stock-meta-strip">
+              <div class="meta-item">
+                <span class="meta-label">52W High</span>
+                <span class="meta-value" id="val52High">₹0.00</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">52W Low</span>
+                <span class="meta-value" id="val52Low">₹0.00</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">18M Trend</span>
+                <span class="meta-value badge" id="val18mTrend">Analyzing...</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Win Probability</span>
+                <span class="meta-value green-text" id="valWinProb">88.5%</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Vol Ratio</span>
+                <span class="meta-value" id="valVolRatio">1.0x</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chart Controls Bar -->
+          <div class="chart-controls-bar">
+            <div class="timeframe-buttons">
+              <button class="tf-btn" data-tf="1d">1D Intraday</button>
+              <button class="tf-btn" data-tf="6m">6 Months</button>
+              <button class="tf-btn" data-tf="12m">12 Months</button>
+              <button class="tf-btn active" data-tf="18m">18 Months</button>
+            </div>
+
+            <div class="chart-toggles">
+              <label class="toggle-checkbox"><input type="checkbox" id="toggleEMA20" checked> 20 EMA</label>
+              <label class="toggle-checkbox"><input type="checkbox" id="toggleEMA50" checked> 50 EMA</label>
+              <label class="toggle-checkbox"><input type="checkbox" id="toggleEMA200" checked> 200 EMA</label>
+              <label class="toggle-checkbox"><input type="checkbox" id="toggleVolume" checked> Volume</label>
+            </div>
+          </div>
+
+          <!-- Interactive Chart Canvas -->
+          <div class="chart-container">
+            <canvas id="stockChartCanvas" width="900" height="420"></canvas>
+            <div id="chartLoadingOverlay" class="chart-overlay">
+              <div class="spinner"></div>
+              <div>AI Assistant is analyzing indicators & Monte Carlo probability paths...</div>
+            </div>
+          </div>
+
+          <!-- Intraday Trade Blueprint Box -->
+          <div class="trade-blueprint-card" id="tradeBlueprintCard">
+            <div class="blueprint-header">
+              <div class="header-left">
+                <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                <h2>AI Intraday Action Setup</h2>
+              </div>
+              <div class="bias-badge" id="biasBadge">CALCULATING</div>
+            </div>
+
+            <div class="blueprint-grid">
+              <div class="bp-box action-box">
+                <span class="bp-label">RECOMMENDED ACTION</span>
+                <div class="bp-val highlight" id="bpAction">ANALYZING...</div>
+              </div>
+              <div class="bp-box">
+                <span class="bp-label">ENTRY RANGE</span>
+                <div class="bp-val" id="bpEntry">₹0 - ₹0</div>
+              </div>
+              <div class="bp-box target-box">
+                <span class="bp-label">TARGET 1 / TARGET 2</span>
+                <div class="bp-val green-text" id="bpTargets">₹0 / ₹0</div>
+              </div>
+              <div class="bp-box sl-box">
+                <span class="bp-label">STRICT STOP-LOSS</span>
+                <div class="bp-val red-text" id="bpStopLoss">₹0</div>
+              </div>
+              <div class="bp-box">
+                <span class="bp-label">RISK : REWARD</span>
+                <div class="bp-val" id="bpRR">1 : 2.0</div>
+              </div>
+            </div>
+
+            <div class="blueprint-reasons" id="blueprintReasons"></div>
+          </div>
+        </section>
+
+        <!-- Right Sidebar: Explainable AI & Order Book Depth -->
+        <aside class="right-panel">
+          <!-- Explainable AI (XAI) Factor Weight Card -->
+          <div class="panel-card xai-card">
+            <h4>Explainable AI (XAI) Factor Weights</h4>
+            <div id="xaiFactorList" class="xai-factor-list"></div>
+          </div>
+
+          <!-- Order Book Depth Simulator -->
+          <div class="panel-card orderbook-card">
+            <div class="card-header-flex">
+              <h4>Live Order Book Depth</h4>
+              <span id="bidImbalanceBadge" class="mini-badge">50% Bids</span>
+            </div>
+            <div class="orderbook-table-container">
+              <div class="ob-side bids">
+                <h5>Bids (Buy Queue)</h5>
+                <div id="obBidsList" class="ob-rows"></div>
+              </div>
+              <div class="ob-side asks">
+                <h5>Asks (Sell Queue)</h5>
+                <div id="obAsksList" class="ob-rows"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Technical Pivots Table -->
+          <div class="panel-card pivot-card">
+            <h4>Standard Pivots & Key Levels</h4>
+            <table class="pivot-table">
+              <tr><th>Resistance 3 (R3)</th><td id="pivR3" class="red-text">₹0.00</td></tr>
+              <tr><th>Resistance 2 (R2)</th><td id="pivR2" class="red-text">₹0.00</td></tr>
+              <tr><th>Resistance 1 (R1)</th><td id="pivR1" class="red-text">₹0.00</td></tr>
+              <tr class="pivot-row"><th>Pivot Point (P)</th><td id="pivP" class="yellow-text">₹0.00</td></tr>
+              <tr><th>Support 1 (S1)</th><td id="pivS1" class="green-text">₹0.00</td></tr>
+              <tr><th>Support 2 (S2)</th><td id="pivS2" class="green-text">₹0.00</td></tr>
+              <tr><th>Support 3 (S3)</th><td id="pivS3" class="green-text">₹0.00</td></tr>
+            </table>
+          </div>
+
+          <!-- News Sentiment Intelligence Feed -->
+          <div class="panel-card news-card">
+            <h4>News & Sentiment Intelligence</h4>
+            <div class="news-feed" id="newsFeed"></div>
+          </div>
+        </aside>
       </div>
-      
-      <div class="watchlist-filters">
-        <span class="filter-chip active" data-filter="all">All</span>
-        <span class="filter-chip" data-filter="nifty50">Top Nifty</span>
-        <span class="filter-chip" data-filter="custom">Custom</span>
+    </main>
+
+    <!-- VIEW 2: COMPANY INTELLIGENCE VIEW -->
+    <main id="viewCompany" class="tab-view">
+      <div class="company-intelligence-grid">
+        <!-- 1. Company Overview Header Card -->
+        <div class="ci-card ci-header-banner">
+          <div class="ci-banner-main">
+            <div>
+              <div class="ci-symbol-strip">
+                <h1 id="ciCompanyName">Reliance Industries Limited</h1>
+                <span class="mcap-pill" id="ciMarketCap">₹18.5 Trillion</span>
+              </div>
+              <p id="ciSectorIndustry" class="ci-sub-text">Energy / Conglomerate | Integrated Oil & Gas</p>
+              <p id="ciDescription" class="ci-description-text">Loading company profile...</p>
+            </div>
+            <div class="ci-meta-column">
+              <div class="ci-meta-box"><span class="ci-label">Headquarters</span><span class="ci-val" id="ciHeadquarters">Mumbai, India</span></div>
+              <div class="ci-meta-box"><span class="ci-label">Employees</span><span class="ci-val" id="ciEmployees">389,000+</span></div>
+              <div class="ci-meta-box"><span class="ci-label">Geographic Reach</span><span class="ci-val" id="ciGeographic">India & Global Terminals</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. AI Executive Investment & Trading Summary -->
+        <div class="ci-card ci-summary-card">
+          <div class="card-header-flex">
+            <h2>AI Executive Investment & Trading Summary</h2>
+            <span class="ai-badge">AI SYNTHESIS</span>
+          </div>
+
+          <div class="summary-qa-grid">
+            <div class="qa-box">
+              <h4>What is this company?</h4>
+              <p id="sumWhatCompany">Loading profile...</p>
+            </div>
+            <div class="qa-box">
+              <h4>What is currently happening?</h4>
+              <p id="sumCurrentDevelopments">Loading news & catalysts...</p>
+            </div>
+            <div class="qa-box">
+              <h4>Why should traders pay attention today?</h4>
+              <p id="sumWhyTradersCare">Loading technical signals...</p>
+            </div>
+            <div class="qa-box highlight-green">
+              <h4>Strongest Bullish Signal</h4>
+              <p id="sumBullishSignal">Loading bullish triggers...</p>
+            </div>
+            <div class="qa-box highlight-red">
+              <h4>Strongest Bearish Signal</h4>
+              <p id="sumBearishSignal">Loading risk concerns...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Business Operations & Competitive Moat -->
+        <div class="ci-card">
+          <h2>Business Operations & Competitive Moat</h2>
+
+          <div class="operations-grid">
+            <div class="op-column">
+              <h3>Business Segments & Revenue Streams</h3>
+              <div id="ciSegmentsList" class="segments-list"></div>
+
+              <h3 class="margin-top-14">Core Products & Offerings</h3>
+              <div id="ciCoreProducts" class="tags-container"></div>
+            </div>
+
+            <div class="op-column">
+              <h3>Competitive Advantage (Moat)</h3>
+              <div id="ciMoatBox" class="moat-box">Loading moat analysis...</div>
+
+              <h3 class="margin-top-14">Target Customer Segments</h3>
+              <p id="ciCustomers" class="sub-desc-text">Loading customer profiles...</p>
+
+              <h3 class="margin-top-14">Key Industry Competitors</h3>
+              <div id="ciCompetitors" class="tags-container"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Earnings & Financial Insights -->
+        <div class="ci-card">
+          <h2>Earnings & Financial Performance Snapshot</h2>
+
+          <div class="financials-grid">
+            <div class="fin-tile">
+              <span class="fin-label">Total Revenue</span>
+              <span class="fin-val" id="finTotalRev">₹0</span>
+            </div>
+            <div class="fin-tile">
+              <span class="fin-label">Revenue Growth</span>
+              <span class="fin-val green-text" id="finRevGrowth">+0%</span>
+            </div>
+            <div class="fin-tile">
+              <span class="fin-label">Trailing P/E Ratio</span>
+              <span class="fin-val" id="finPERatio">0.0x</span>
+            </div>
+            <div class="fin-tile">
+              <span class="fin-label">Price / Book (P/B)</span>
+              <span class="fin-val" id="finPBRatio">0.0x</span>
+            </div>
+            <div class="fin-tile">
+              <span class="fin-label">Return on Equity (ROE)</span>
+              <span class="fin-val green-text" id="finROE">0%</span>
+            </div>
+            <div class="fin-tile">
+              <span class="fin-label">Debt to Equity</span>
+              <span class="fin-val" id="finDebtEquity">0.0</span>
+            </div>
+            <div class="fin-tile">
+              <span class="fin-label">Free Cash Flow</span>
+              <span class="fin-val" id="finFCF">₹0</span>
+            </div>
+            <div class="fin-tile">
+              <span class="fin-label">Dividend Yield</span>
+              <span class="fin-val" id="finDivYield">0%</span>
+            </div>
+          </div>
+
+          <div class="fin-summary-box">
+            <h4>AI Financial Impact Analysis</h4>
+            <p id="finAISummary">Evaluating financial performance impact on future stock valuation...</p>
+          </div>
+        </div>
+
+        <!-- 5. AI Impact Analysis Engine & Recent News Timeline -->
+        <div class="ci-card wide">
+          <div class="impact-grid">
+            <div class="imp-column">
+              <h2>AI Market Impact & Catalyst Engine</h2>
+
+              <div class="catalysts-box">
+                <div class="cat-side bullish">
+                  <h4>Growth Catalysts & Upside Drivers</h4>
+                  <ul id="ciBullishCatalysts"></ul>
+                </div>
+                <div class="cat-side bearish">
+                  <h4>Key Risk Factors & Downside Headwinds</h4>
+                  <ul id="ciBearishRisks"></ul>
+                </div>
+              </div>
+
+              <div class="outlook-box">
+                <div class="out-item">
+                  <span class="out-label">Intraday (Short-Term) Impact</span>
+                  <p id="ciShortTermImpact">Analyzing intraday price action...</p>
+                </div>
+                <div class="out-item">
+                  <span class="out-label">Medium-Term Structural Outlook</span>
+                  <p id="ciMediumTermOutlook">Analyzing multi-month trend momentum...</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="imp-column">
+              <h2>Recent Corporate Events & News Timeline</h2>
+              <div id="ciNewsTimeline" class="news-timeline-list"></div>
+            </div>
+          </div>
+        </div>
+
       </div>
+    </main>
 
-      <div class="watchlist-items" id="watchlistItems">
-        <!-- Dynamically rendered -->
-      </div>
+    <!-- VIEW 3: OPPORTUNITY SCANNER VIEW -->
+    <main id="viewScanner" class="tab-view">
+      <div class="scanner-container">
+        <div class="scanner-header-card">
+          <h2>Real-Time Market Opportunity Scanner</h2>
+          <p>Scans Indian equity universe, calculates risk-adjusted return scores, and identifies high-probability intraday setups.</p>
+          
+          <div class="filter-controls-grid">
+            <div class="filter-group">
+              <label>Sector Filter</label>
+              <select id="scanSector">
+                <option value="all">All Sectors</option>
+                <option value="Banking">Banking & Financials</option>
+                <option value="IT Services">IT Services</option>
+                <option value="Energy">Energy & Power</option>
+                <option value="Automobile">Automobile</option>
+                <option value="Telecom">Telecom & Cables</option>
+                <option value="Pharmaceuticals">Pharmaceuticals</option>
+                <option value="FMCG">FMCG</option>
+              </select>
+            </div>
 
-      <div class="panel-card quick-stats-card">
-        <h4>Senior Researcher Mode</h4>
-        <div class="mode-info">
-          <div class="mode-tag"><span class="dot"></span> Intraday Specialist</div>
-          <p>Analyzing 18M / 12M / 6M Structural Trends + VWAP, Standard Pivots, Volume Surges & Real-time Catalyst News.</p>
+            <div class="filter-group">
+              <label>Market Cap</label>
+              <select id="scanCap">
+                <option value="all">All Caps</option>
+                <option value="Large Cap">Large Cap</option>
+                <option value="Mid Cap">Mid Cap</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label>Risk Profile</label>
+              <select id="scanRisk">
+                <option value="all">All Risk Levels</option>
+                <option value="Low Risk">Low Risk</option>
+                <option value="Moderate Risk">Moderate Risk</option>
+                <option value="High Risk">High Risk</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label>Trading Strategy</label>
+              <select id="scanStrategy">
+                <option value="all">All Strategies</option>
+                <option value="Breakout">Breakout</option>
+                <option value="Dip Buying">Dip Buying</option>
+                <option value="Momentum Scalp">Momentum Scalp</option>
+                <option value="Mean Reversion">Mean Reversion</option>
+              </select>
+            </div>
+
+            <button id="runScannerBtn" class="primary-btn scan-btn">Scan Opportunities</button>
+          </div>
+        </div>
+
+        <div class="scanner-table-card">
+          <div class="table-header-strip">
+            <h3>Top Intraday Trade Opportunities</h3>
+            <span id="scanCountBadge" class="count-badge">Found 0 Opportunities</span>
+          </div>
+
+          <table class="scanner-table">
+            <thead>
+              <tr>
+                <th>Stock / Ticker</th>
+                <th>Sector</th>
+                <th>Price</th>
+                <th>AI Score</th>
+                <th>Bias / Signal</th>
+                <th>Strategy</th>
+                <th>Recommended Entry</th>
+                <th>Target Price</th>
+                <th>Stop Loss</th>
+                <th>R : R</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="scannerTableBody">
+              <tr>
+                <td colspan="11" class="loading-td">Click "Scan Opportunities" to run real-time market scan...</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
-    </aside>
+    </main>
 
-    <!-- Center Column: Stock Overview, Chart Canvas, & Intraday Trade Blueprint -->
-    <section class="center-panel">
-      <!-- Stock Header Info Bar -->
-      <div class="stock-header-card" id="stockHeaderCard">
-        <div class="stock-title-section">
-          <div>
-            <h1 id="stockSymbolDisplay">RELIANCE<span>.NS</span></h1>
-            <div id="stockCompanyDisplay" class="sub-text">Reliance Industries Limited | Energy & Conglomerate</div>
+    <!-- VIEW 4: PREDICTIVE ANALYTICS & PATTERNS VIEW -->
+    <main id="viewPredictive" class="tab-view">
+      <div class="predictive-grid">
+        <div class="predictive-card wide">
+          <div class="card-header-flex">
+            <div>
+              <h2>Monte Carlo Stochastic Price Forecasting</h2>
+              <p>500-run Geometric Brownian Motion price trajectory simulation over a 5-day horizon.</p>
+            </div>
+            <div class="confidence-badge" id="mcConfidenceBadge">CONFIDENCE: 85%</div>
           </div>
-          <div class="stock-price-box">
-            <div id="stockPriceDisplay" class="price-large">₹0.00</div>
-            <div id="stockChangeDisplay" class="price-change neutral">+0.00 (0.00%)</div>
+
+          <div class="mc-stats-grid">
+            <div class="stat-box">
+              <span class="stat-label">Target Hit Probability</span>
+              <div class="stat-val green-text" id="mcTargetProb">88.5%</div>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Bullish Breakout Prob</span>
+              <div class="stat-val yellow-text" id="mcBreakoutProb">74.2%</div>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Downside Risk Prob</span>
+              <div class="stat-val red-text" id="mcDownsideProb">12.5%</div>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Expected Target Range</span>
+              <div class="stat-val" id="mcExpectedRange">₹3,010 - ₹3,180</div>
+            </div>
+          </div>
+
+          <div class="mc-chart-wrapper">
+            <canvas id="mcCanvas" width="900" height="340"></canvas>
           </div>
         </div>
 
-        <div class="stock-meta-strip">
-          <div class="meta-item">
-            <span class="meta-label">52W High</span>
-            <span class="meta-value" id="val52High">₹0.00</span>
-          </div>
-          <div class="meta-item">
-            <span class="meta-label">52W Low</span>
-            <span class="meta-value" id="val52Low">₹0.00</span>
-          </div>
-          <div class="meta-item">
-            <span class="meta-label">18M Trend</span>
-            <span class="meta-value badge" id="val18mTrend">Analyzing...</span>
-          </div>
-          <div class="meta-item">
-            <span class="meta-label">6M Trend</span>
-            <span class="meta-value badge" id="val6mTrend">Analyzing...</span>
-          </div>
-          <div class="meta-item">
-            <span class="meta-label">Vol Ratio</span>
-            <span class="meta-value" id="valVolRatio">1.0x</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Timeframe Selector & Indicators Toggle -->
-      <div class="chart-controls-bar">
-        <div class="timeframe-buttons">
-          <button class="tf-btn" data-tf="1d">1D Intraday</button>
-          <button class="tf-btn" data-tf="6m">6 Months</button>
-          <button class="tf-btn" data-tf="12m">12 Months</button>
-          <button class="tf-btn active" data-tf="18m">18 Months</button>
+        <div class="predictive-card">
+          <h2>Recognized Technical Patterns</h2>
+          <div id="patternsContainer" class="patterns-grid"></div>
         </div>
 
-        <div class="chart-toggles">
-          <label class="toggle-checkbox"><input type="checkbox" id="toggleEMA20" checked> 20 EMA</label>
-          <label class="toggle-checkbox"><input type="checkbox" id="toggleEMA50" checked> 50 EMA</label>
-          <label class="toggle-checkbox"><input type="checkbox" id="toggleEMA200" checked> 200 EMA</label>
-          <label class="toggle-checkbox"><input type="checkbox" id="toggleVolume" checked> Volume</label>
-        </div>
-      </div>
-
-      <!-- Interactive Chart Canvas -->
-      <div class="chart-container">
-        <canvas id="stockChartCanvas" width="900" height="420"></canvas>
-        <div id="chartLoadingOverlay" class="chart-overlay">
-          <div class="spinner"></div>
-          <div>Senior Researcher AI is analyzing price action & indicators...</div>
-        </div>
-      </div>
-
-      <!-- Intraday Trade Blueprint Box -->
-      <div class="trade-blueprint-card" id="tradeBlueprintCard">
-        <div class="blueprint-header">
-          <div class="header-left">
-            <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
-            <h2>AI Senior Analyst Intraday Trade Blueprint</h2>
+        <div class="predictive-card">
+          <h2>Historical Scenario Similarity Match</h2>
+          <div id="similarityContent" class="similarity-box">
+            <div class="sim-metric">
+              <span class="sim-label">Matched Historical Windows</span>
+              <span class="sim-val" id="simCount">14 Scenarios</span>
+            </div>
+            <div class="sim-metric">
+              <span class="sim-label">Historical Win Rate</span>
+              <span class="sim-val green-text" id="simWinRate">82.4%</span>
+            </div>
+            <div class="sim-metric">
+              <span class="sim-label">Avg 5-Day Forward Return</span>
+              <span class="sim-val green-text" id="simAvgReturn">+2.15%</span>
+            </div>
+            <div class="sim-metric">
+              <span class="sim-label">Top Pattern Match Score</span>
+              <span class="sim-val yellow-text" id="simTopMatch">89.5% Similarity</span>
+            </div>
           </div>
-          <div class="bias-badge" id="biasBadge">CALCULATING</div>
-        </div>
-
-        <div class="blueprint-grid">
-          <div class="bp-box action-box">
-            <span class="bp-label">RECOMMENDED ACTION</span>
-            <div class="bp-val highlight" id="bpAction">ANALYZING...</div>
-          </div>
-          <div class="bp-box">
-            <span class="bp-label">ENTRY RANGE</span>
-            <div class="bp-val" id="bpEntry">₹0 - ₹0</div>
-          </div>
-          <div class="bp-box target-box">
-            <span class="bp-label">TARGET 1 / TARGET 2</span>
-            <div class="bp-val green-text" id="bpTargets">₹0 / ₹0</div>
-          </div>
-          <div class="bp-box sl-box">
-            <span class="bp-label">STRICT STOP-LOSS</span>
-            <div class="bp-val red-text" id="bpStopLoss">₹0</div>
-          </div>
-          <div class="bp-box">
-            <span class="bp-label">RISK : REWARD</span>
-            <div class="bp-val" id="bpRR">1 : 2.0</div>
-          </div>
-        </div>
-
-        <div class="blueprint-reasons" id="blueprintReasons">
-          <!-- Reasons list dynamically generated -->
         </div>
       </div>
-    </section>
+    </main>
 
-    <!-- Right Column: Gauge Meter, Pivot Table, News Feed & AI Report Exporter -->
-    <aside class="right-panel">
-      <!-- Analyst Technical Gauge Meter -->
-      <div class="panel-card gauge-card">
-        <h4>Intraday Signal Meter</h4>
-        <div class="gauge-wrapper">
-          <canvas id="gaugeCanvas" width="220" height="120"></canvas>
-          <div class="gauge-value" id="gaugeLabel">NEUTRAL</div>
-        </div>
-      </div>
+    <!-- VIEW 5: AI ACCURACY TRACKER & LEARNING VIEW -->
+    <main id="viewAccuracy" class="tab-view">
+      <div class="accuracy-grid">
+        <div class="metrics-row">
+          <div class="metric-card glow-green">
+            <span class="m-label">AI Prediction Win Rate</span>
+            <div class="m-val" id="accWinRate">84.5%</div>
+            <span class="m-sub">Target hit precision rate</span>
+          </div>
 
-      <!-- Key Technicals & Standard Pivot Points -->
-      <div class="panel-card pivot-card">
-        <h4>Standard Pivot Points & Support/Resistance</h4>
-        <table class="pivot-table">
-          <tr><th>Resistance 3 (R3)</th><td id="pivR3" class="red-text">₹0.00</td></tr>
-          <tr><th>Resistance 2 (R2)</th><td id="pivR2" class="red-text">₹0.00</td></tr>
-          <tr><th>Resistance 1 (R1)</th><td id="pivR1" class="red-text">₹0.00</td></tr>
-          <tr class="pivot-row"><th>Pivot Point (P)</th><td id="pivP" class="yellow-text">₹0.00</td></tr>
-          <tr><th>Support 1 (S1)</th><td id="pivS1" class="green-text">₹0.00</td></tr>
-          <tr><th>Support 2 (S2)</th><td id="pivS2" class="green-text">₹0.00</td></tr>
-          <tr><th>Support 3 (S3)</th><td id="pivS3" class="green-text">₹0.00</td></tr>
-        </table>
-      </div>
+          <div class="metric-card">
+            <span class="m-label">Evaluated Trade Setups</span>
+            <div class="m-val" id="accTotalTrades">24 Trades</div>
+            <span class="m-sub">Total logged recommendations</span>
+          </div>
 
-      <!-- Live News & Spike/Loss Catalysts Scanner -->
-      <div class="panel-card news-card">
-        <div class="panel-header-sm">
-          <h4>Spike & Loss News Catalysts</h4>
-          <span class="live-dot" title="Live Google News RSS">LIVE</span>
-        </div>
-        <div class="news-feed" id="newsFeed">
-          <div class="news-item loading-skeleton">Scanning market news...</div>
-        </div>
-      </div>
+          <div class="metric-card glow-blue">
+            <span class="m-label">Profit Factor</span>
+            <div class="m-val" id="accProfitFactor">2.45</div>
+            <span class="m-sub">Gross Win / Gross Loss ratio</span>
+          </div>
 
-      <!-- Full Executive Research Report Exporter -->
-      <div class="panel-card report-card">
-        <div class="panel-header-sm">
-          <h4>Senior Research Report</h4>
-          <div class="btn-group-sm">
-            <button id="copyReportBtn" class="sm-btn">Copy</button>
-            <button id="downloadReportBtn" class="sm-btn">Download</button>
+          <div class="metric-card">
+            <span class="m-label">Average Trade Gain</span>
+            <div class="m-val green-text" id="accAvgWin">+2.04%</div>
+            <span class="m-sub">Average return per winning trade</span>
           </div>
         </div>
-        <div class="report-content" id="reportContent">
-          Select a stock and click "Analyze Stock" to generate a full Senior Researcher Report.
+
+        <div class="accuracy-table-card">
+          <div class="card-header-flex">
+            <h3>Recent Logged Trade Recommendations & Feedback Loop</h3>
+            <button id="refreshAccuracyBtn" class="sm-btn">Refresh Stats</button>
+          </div>
+
+          <table class="accuracy-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Timestamp</th>
+                <th>Stock</th>
+                <th>Signal Bias</th>
+                <th>Entry Price</th>
+                <th>Target Price</th>
+                <th>Stop Loss</th>
+                <th>Confidence</th>
+                <th>Status / Outcome</th>
+                <th>Actual Return</th>
+                <th>Model Feedback</th>
+              </tr>
+            </thead>
+            <tbody id="accuracyTableBody">
+              <tr><td colspan="11" class="loading-td">Loading accuracy log history...</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
-    </aside>
-  </main>
+    </main>
 
-  <footer class="app-footer">
-    <div>NSE Intraday AI Senior Market Researcher & Stock Analyst Terminal &copy; 2026. Designed for Indian Equity & Futures Traders.</div>
-    <div class="disclaimer-text">Disclaimer: Stock market trading carries risk. Trade recommendations are generated for educational and research purposes. Always use strict stop-loss rules.</div>
-  </footer>
+  </div>
 
   <script src="app.js"></script>
 </body>
