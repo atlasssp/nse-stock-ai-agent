@@ -416,95 +416,357 @@ function renderCompanyIntelligence(ci) {
 }
 
 // Chatbot Logic
-async function sendChatMessage(msgText, isDrawer = false) {
-  const text = msgText.trim();
-  if (!text) return;
+// ============================================================
+// ARJUN CHAT ENGINE — SSE STREAMING v2
+// ============================================================
 
-  const targetBox = isDrawer ? elements.drawerMessages : elements.chatMessages;
-  const inputElem = isDrawer ? elements.drawerChatInput : elements.chatInput;
+const chatState = {
+  isStreaming: false,
+  activePillRefreshTimers: [],
+};
 
-  // Clear input
-  inputElem.value = "";
+/** Master entry: all chat messages flow through here */
+async function sendChatMessage(msgText) {
+  const text = (msgText || '').trim();
+  if (!text || chatState.isStreaming) return;
 
-  // Append user message
-  targetBox.innerHTML += `
-    <div class="chat-msg user">
-      <div class="msg-avatar">YOU</div>
+  // Clear both inputs
+  const fieldEl = document.getElementById('chatInputField');
+  if (fieldEl) fieldEl.value = '';
+
+  // Hide welcome screen on first message
+  const welcome = document.getElementById('chatWelcomeScreen');
+  if (welcome) welcome.style.display = 'none';
+
+  const messagesBox = document.getElementById('chatMessagesBody');
+  if (!messagesBox) return;
+
+  // 1 — Render user bubble
+  const userRow = document.createElement('div');
+  userRow.className = 'chat-msg-row user';
+  userRow.innerHTML = `
+    <div class="msg-avatar user-avatar">👤</div>
+    <div class="msg-bubble user">
       <div class="msg-content">${escapeHTML(text)}</div>
+      <span class="msg-time">${new Date().toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'})}</span>
     </div>
   `;
-  targetBox.scrollTop = targetBox.scrollHeight;
+  messagesBox.appendChild(userRow);
 
-  // Append loading indicator
-  const loadingId = "load_" + Date.now();
-  targetBox.innerHTML += `
-    <div class="chat-msg assistant" id="${loadingId}">
-      <div class="msg-avatar">AI</div>
-      <div class="msg-content"><div class="spinner"></div> Senior analyst is analyzing market data...</div>
+  // 2 — SSE status bar (immediate)
+  const statusBar = document.createElement('div');
+  statusBar.className = 'sse-status-bar';
+  statusBar.id = 'sseStatusBar';
+  statusBar.innerHTML = `<div class="sse-spinner"></div><span id="sseStatusText">⚡ Connecting to Arjun...</span>`;
+  messagesBox.appendChild(statusBar);
+  messagesBox.scrollTop = messagesBox.scrollHeight;
+
+  // 3 — Prepare AI bubble (will fill with streamed tokens)
+  const aiRow = document.createElement('div');
+  aiRow.className = 'chat-msg-row';
+  const msgId = 'aiMsg_' + Date.now();
+  aiRow.id = msgId;
+  aiRow.innerHTML = `
+    <div class="msg-avatar ai-avatar">🤖</div>
+    <div class="msg-bubble ai streaming" id="bubble_${msgId}">
+      <div class="msg-content" id="content_${msgId}"></div>
+      <span class="msg-time" id="time_${msgId}"></span>
     </div>
   `;
-  targetBox.scrollTop = targetBox.scrollHeight;
+
+  chatState.isStreaming = true;
+  disableChatInput(true);
+
+  let rawText = '';
+  let intent = 'general';
+  let chips = [];
+  let tradeCard = null;
+  let liveCtx = {};
 
   try {
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: text,
-        symbol: state.currentSymbol,
-        history: state.chatHistory
-      })
-    });
-    const data = await res.json();
+    const url = `/api/chat/stream?message=${encodeURIComponent(text)}&symbol=${encodeURIComponent(state.currentSymbol)}`;
+    const eventSource = new EventSource(url);
 
-    const loadingElem = document.getElementById(loadingId);
-    if (loadingElem) loadingElem.remove();
+    eventSource.onmessage = (e) => {
+      const packet = JSON.parse(e.data);
 
-    if (data.reply) {
-      targetBox.innerHTML += `
-        <div class="chat-msg assistant">
-          <div class="msg-avatar">AI</div>
-          <div class="msg-content">${formatMarkdown(data.reply)}</div>
-        </div>
-      `;
-      state.chatHistory.push({ user: text, assistant: data.reply });
-    } else if (data.error) {
-      targetBox.innerHTML += `
-        <div class="chat-msg assistant">
-          <div class="msg-avatar">AI</div>
-          <div class="msg-content red-text">Error: ${data.error}</div>
-        </div>
-      `;
-    }
+      if (packet.type === 'status') {
+        const statusTxt = document.getElementById('sseStatusText');
+        if (statusTxt) statusTxt.textContent = packet.text;
+      }
+      else if (packet.type === 'token') {
+        // Remove status bar, show AI bubble on first token
+        const sb = document.getElementById('sseStatusBar');
+        if (sb) sb.remove();
+        if (!messagesBox.contains(aiRow)) messagesBox.appendChild(aiRow);
+
+        rawText += packet.text;
+        const contentEl = document.getElementById(`content_${msgId}`);
+        if (contentEl) contentEl.innerHTML = formatMarkdown(rawText);
+        messagesBox.scrollTop = messagesBox.scrollHeight;
+      }
+      else if (packet.type === 'complete') {
+        eventSource.close();
+        intent = packet.intent || 'general';
+        chips = packet.chips || [];
+        tradeCard = packet.trade_card || null;
+        liveCtx = packet.live_context || {};
+
+        // Finalize AI bubble
+        const bubble = document.getElementById(`bubble_${msgId}`);
+        if (bubble) bubble.classList.remove('streaming');
+        const timEl = document.getElementById(`time_${msgId}`);
+        if (timEl) timEl.textContent = packet.timestamp || '';
+
+        // Append live pill bar
+        if (liveCtx.price) {
+          const pillBar = buildLivePillBar(liveCtx, msgId);
+          aiRow.appendChild(pillBar);
+          startLivePillRefresh(msgId, state.currentSymbol);
+        }
+
+        // Append trade card if available
+        if (tradeCard) {
+          const tc = buildTradeCard(tradeCard);
+          messagesBox.appendChild(tc);
+        }
+
+        // Append follow-up chips
+        if (chips.length > 0) {
+          const chipsEl = buildFollowUpChips(chips);
+          messagesBox.appendChild(chipsEl);
+        }
+
+        state.chatHistory.push({ user: text, assistant: rawText });
+        chatState.isStreaming = false;
+        disableChatInput(false);
+        messagesBox.scrollTop = messagesBox.scrollHeight;
+      }
+      else if (packet.type === 'error') {
+        eventSource.close();
+        const sb = document.getElementById('sseStatusBar');
+        if (sb) sb.remove();
+        showChatError(messagesBox, packet.text);
+        chatState.isStreaming = false;
+        disableChatInput(false);
+      }
+    };
+
+    eventSource.onerror = () => {
+      eventSource.close();
+      const sb = document.getElementById('sseStatusBar');
+      if (sb) sb.remove();
+      if (!messagesBox.contains(aiRow)) {
+        // SSE failed before any token: fall back to POST /api/chat
+        fallbackChatPost(text, messagesBox);
+      } else {
+        chatState.isStreaming = false;
+        disableChatInput(false);
+      }
+    };
+
   } catch (err) {
-    console.error("Chat error:", err);
-  } finally {
-    targetBox.scrollTop = targetBox.scrollHeight;
+    console.error('Chat SSE error:', err);
+    const sb = document.getElementById('sseStatusBar');
+    if (sb) sb.remove();
+    chatState.isStreaming = false;
+    disableChatInput(false);
   }
 }
 
-function sendQuickPrompt(promptText) {
-  // If not on chat tab, switch to chat tab
-  const chatTab = document.querySelector('.nav-tab[data-tab="chat"]');
-  if (chatTab) chatTab.click();
-  sendChatMessage(promptText, false);
+/** Fallback non-streaming POST for environments that don't support SSE */
+async function fallbackChatPost(text, messagesBox) {
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text, symbol: state.currentSymbol, history: state.chatHistory })
+    });
+    const data = await res.json();
+    if (data.reply) {
+      const aiRow = document.createElement('div');
+      aiRow.className = 'chat-msg-row';
+      aiRow.innerHTML = `
+        <div class="msg-avatar ai-avatar">🤖</div>
+        <div class="msg-bubble ai">
+          <div class="msg-content">${formatMarkdown(data.reply)}</div>
+          <span class="msg-time">${data.timestamp || ''}</span>
+        </div>
+      `;
+      messagesBox.appendChild(aiRow);
+      if (data.chips && data.chips.length) messagesBox.appendChild(buildFollowUpChips(data.chips));
+      state.chatHistory.push({ user: text, assistant: data.reply });
+    }
+  } catch (e) { console.error('Fallback chat error:', e); }
+  finally {
+    chatState.isStreaming = false;
+    disableChatInput(false);
+    messagesBox.scrollTop = messagesBox.scrollHeight;
+  }
 }
 
+function disableChatInput(disabled) {
+  const field = document.getElementById('chatInputField');
+  const btn = document.getElementById('chatSendBtn');
+  if (field) field.disabled = disabled;
+  if (btn) btn.disabled = disabled;
+}
+
+function showChatError(box, msg) {
+  const row = document.createElement('div');
+  row.className = 'chat-msg-row';
+  row.innerHTML = `
+    <div class="msg-avatar ai-avatar">⚠️</div>
+    <div class="msg-bubble ai">
+      <div class="msg-content" style="color:var(--red-glow)">${escapeHTML(msg || 'Connection error. Please retry.')}</div>
+    </div>
+  `;
+  box.appendChild(row);
+}
+
+/** Quick prompt from welcome screen or follow-up chip click */
+function sendQuickPrompt(promptText) {
+  const chatTab = document.querySelector('.nav-tab[data-tab="chat"]');
+  if (chatTab && state.activeTab !== 'chat') chatTab.click();
+  const field = document.getElementById('chatInputField');
+  if (field) field.value = promptText;
+  sendChatMessage(promptText);
+}
+
+// ── Build Live Data Pill Bar ──────────────────────────────────────────────────
+function buildLivePillBar(ctx, msgId) {
+  const sign = (ctx.change_pct || 0) >= 0 ? '+' : '';
+  const changeClass = (ctx.change_pct || 0) >= 0 ? 'positive' : 'negative';
+  const div = document.createElement('div');
+  div.className = 'live-pill-bar';
+  div.id = `pillBar_${msgId}`;
+  div.innerHTML = `
+    <span class="live-pill price"><span class="pill-label">PRICE</span> ₹${(ctx.price || 0).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
+    <span class="live-pill change ${changeClass}">${sign}${(ctx.change_pct||0).toFixed(2)}%</span>
+    <span class="live-pill rsi"><span class="pill-label">RSI</span> ${(ctx.rsi||50).toFixed(1)}</span>
+    <span class="live-pill volume"><span class="pill-label">VOL</span> ${(ctx.vol_ratio||1).toFixed(1)}x</span>
+    <span class="live-pill prob"><span class="pill-label">MC</span> ${ctx.mc_prob||85}%</span>
+    <span class="live-pill bias">${ctx.bias||'NEUTRAL'}</span>
+  `;
+  return div;
+}
+
+// ── Auto-refresh pill bar every 30s ──────────────────────────────────────────
+function startLivePillRefresh(msgId, symbol) {
+  const timerId = setInterval(async () => {
+    try {
+      const res = await fetch(`/api/quickprice?symbol=${encodeURIComponent(symbol)}`);
+      const d = await res.json();
+      if (!d.price) return;
+      const bar = document.getElementById(`pillBar_${msgId}`);
+      if (!bar) { clearInterval(timerId); return; }
+      const sign = (d.change_pct||0) >= 0 ? '+' : '';
+      const cls = (d.change_pct||0) >= 0 ? 'positive' : 'negative';
+      bar.innerHTML = `
+        <span class="live-pill price"><span class="pill-label">PRICE</span> ₹${(d.price||0).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
+        <span class="live-pill change ${cls}">${sign}${(d.change_pct||0).toFixed(2)}%</span>
+        <span class="live-pill rsi"><span class="pill-label">RSI</span> ${(d.rsi||50).toFixed(1)}</span>
+        <span class="live-pill volume"><span class="pill-label">VOL</span> ${(d.vol_ratio||1).toFixed(1)}x</span>
+        <span class="live-pill prob"><span class="pill-label">MC</span> ${d.mc_prob||85}%</span>
+        <span class="live-pill bias">${d.bias||'NEUTRAL'}</span>
+      `;
+    } catch(e) {}
+  }, 30000);
+  chatState.activePillRefreshTimers.push(timerId);
+}
+
+// ── Build Trade Card Widget ───────────────────────────────────────────────────
+function buildTradeCard(tc) {
+  const biasClass = (tc.bias||'').toLowerCase().replace(/[^a-z]/g, '-').replace('strong-buy','strong-buy').replace('buy-on-dips','buy').replace('neutral','neutral').replace('sell','sell') || 'neutral';
+  const safeClass = tc.bias && tc.bias.includes('STRONG') ? 'strong-buy' : tc.bias && tc.bias.includes('BUY') ? 'buy' : tc.bias && tc.bias.includes('SELL') ? 'sell' : 'neutral';
+  const div = document.createElement('div');
+  div.className = 'trade-card-widget';
+  div.innerHTML = `
+    <div class="tc-header">
+      <span class="tc-bias-badge ${safeClass}">${tc.bias || 'NEUTRAL'}</span>
+      <span class="tc-prob">🎯 ${tc.mc_prob || 85}% Probability</span>
+    </div>
+    <div class="tc-grid">
+      <div class="tc-item"><span>Entry Zone</span><strong class="blue">${tc.entry_range || 'N/A'}</strong></div>
+      <div class="tc-item"><span>Target 1</span><strong class="green">₹${(tc.target1||0).toLocaleString('en-IN', {minimumFractionDigits:2})}</strong></div>
+      <div class="tc-item"><span>Target 2</span><strong class="green">₹${(tc.target2||0).toLocaleString('en-IN', {minimumFractionDigits:2})}</strong></div>
+      <div class="tc-item"><span>Stop-Loss</span><strong class="red">₹${(tc.stop_loss||0).toLocaleString('en-IN', {minimumFractionDigits:2})}</strong></div>
+      <div class="tc-item"><span>R:R Ratio</span><strong>${tc.rr_ratio || '1:1.5'}</strong></div>
+      <div class="tc-item"><span>Confidence</span><strong>${tc.confidence || 80}%</strong></div>
+    </div>
+    <div class="tc-actions">
+      <button class="tc-btn" onclick="copyTradeSetup(this)" title="Copy trade setup to clipboard">📋 Copy Setup</button>
+      <button class="tc-btn primary" onclick="sendQuickPrompt('Calculate position size for ₹1 lakh for ${tc.symbol || state.currentSymbol}')" title="Calculate optimal position size">🧮 Size Position</button>
+    </div>
+  `;
+  return div;
+}
+
+function copyTradeSetup(btn) {
+  const card = btn.closest('.trade-card-widget');
+  const text = Array.from(card.querySelectorAll('.tc-item'))
+    .map(i => `${i.querySelector('span').textContent}: ${i.querySelector('strong').textContent}`)
+    .join(' | ');
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => { btn.innerHTML = '📋 Copy Setup'; }, 2000);
+  });
+}
+
+// ── Build Follow-Up Chips ─────────────────────────────────────────────────────
+function buildFollowUpChips(chips) {
+  const div = document.createElement('div');
+  div.innerHTML = `<div class="chips-label">Continue exploring</div><div class="followup-chips-row" id="chips_${Date.now()}"></div>`;
+  const row = div.querySelector('.followup-chips-row');
+  chips.forEach(chip => {
+    const btn = document.createElement('button');
+    btn.className = 'followup-chip';
+    btn.textContent = chip;
+    btn.onclick = () => sendQuickPrompt(chip);
+    row.appendChild(btn);
+  });
+  return div;
+}
+
+// ── Markdown Renderer (enhanced) ─────────────────────────────────────────────
 function formatMarkdown(text) {
-  if (!text) return "";
-  let formatted = text
-    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-    .replace(/^#### (.*$)/gim, '<h4>$1</h4>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/`(.*?)`/g, '<code>$1</code>')
-    .replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>')
-    .replace(/^- (.*$)/gim, '• $1<br>')
-    .replace(/\n\n/g, '<br><br>');
-  return formatted;
+  if (!text) return '';
+  // Tables
+  let html = text.replace(/\|(.+)\|\n\|[-| :]+\|\n((?:\|.+\|\n?)+)/g, (match, header, body) => {
+    const ths = header.split('|').filter(c => c.trim()).map(c => `<th>${c.trim()}</th>`).join('');
+    const trs = body.trim().split('\n').map(row => {
+      const tds = row.split('|').filter(c => c.trim() !== '').map(c => `<td>${c.trim()}</td>`).join('');
+      return `<tr>${tds}</tr>`;
+    }).join('');
+    return `<table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>`;
+  });
+  // Headings
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+  // Bold & italic
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  // Inline code
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // Blockquote
+  html = html.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
+  // HR
+  html = html.replace(/^---+$/gm, '<hr>');
+  // Bullet lists
+  html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+  // Line breaks
+  html = html.replace(/\n{2,}/g, '<br><br>');
+  html = html.replace(/\n/g, '<br>');
+  return html;
 }
 
 function escapeHTML(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 // Render Canvas Candlestick Chart
@@ -951,26 +1213,72 @@ function setupEventListeners() {
   elements.toggleEMA200.addEventListener("change", (e) => { state.toggles.ema200 = e.target.checked; renderCandleChart(state.stockData.candles); });
   elements.toggleVolume.addEventListener("change", (e) => { state.toggles.volume = e.target.checked; renderCandleChart(state.stockData.candles); });
 
-  // Chat Handlers
-  elements.sendChatBtn.addEventListener("click", () => sendChatMessage(elements.chatInput.value, false));
-  elements.chatInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") sendChatMessage(elements.chatInput.value, false);
-  });
+  // ── Streaming Chat Input (new chatInputField) ───────────────────────────
+  const chatField = document.getElementById('chatInputField');
+  const chatSendBtn = document.getElementById('chatSendBtn');
 
-  elements.sendDrawerChatBtn.addEventListener("click", () => sendChatMessage(elements.drawerChatInput.value, true));
-  elements.drawerChatInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") sendChatMessage(elements.drawerChatInput.value, true);
-  });
+  if (chatField) {
+    chatField.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendChatMessage(chatField.value);
+      }
+    });
+    // Auto-resize textarea
+    chatField.addEventListener('input', () => {
+      chatField.style.height = 'auto';
+      chatField.style.height = Math.min(chatField.scrollHeight, 100) + 'px';
+    });
+  }
+  if (chatSendBtn) chatSendBtn.addEventListener('click', () => sendChatMessage(chatField ? chatField.value : ''));
 
-  elements.toggleFloatingChatBtn.addEventListener("click", () => {
-    elements.floatingChatDrawer.classList.toggle("active");
-  });
+  // ── FAB trigger for drawer (open/collapse) ───────────────────────────────
+  const fabBtn = document.getElementById('chatFabTrigger');
+  const chatDrawer = document.getElementById('chatbotDrawer');
+  if (fabBtn && chatDrawer) {
+    fabBtn.addEventListener('click', () => {
+      chatDrawer.classList.toggle('hidden');
+      chatDrawer.classList.remove('collapsed');
+      fabBtn.classList.toggle('hidden');
+    });
+  }
 
-  elements.closeChatDrawerBtn.addEventListener("click", () => {
-    elements.floatingChatDrawer.classList.remove("active");
-  });
+  // ── Drawer header (collapse / expand on click) ───────────────────────────
+  const drawerHeader = document.getElementById('chatDrawerHeader');
+  if (drawerHeader && chatDrawer) {
+    drawerHeader.addEventListener('click', (e) => {
+      if (e.target.closest('.chat-action-btn')) return;
+      chatDrawer.classList.toggle('collapsed');
+    });
+  }
 
-  elements.runScannerBtn.addEventListener("click", runScanner);
+  // ── Drawer close button ──────────────────────────────────────────────────
+  const closeDrawerBtn = document.getElementById('chatDrawerCloseBtn');
+  if (closeDrawerBtn && chatDrawer && fabBtn) {
+    closeDrawerBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      chatDrawer.classList.add('hidden');
+      if (fabBtn) fabBtn.classList.remove('hidden');
+    });
+  }
 
-  elements.refreshAccuracyBtn.addEventListener("click", fetchAccuracyStats);
+  // ── Welcome prompt click delegation ─────────────────────────────────────
+  const welcomeEl = document.getElementById('chatWelcomeScreen');
+  if (welcomeEl) {
+    welcomeEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('.welcome-prompt');
+      if (btn) sendQuickPrompt(btn.dataset.prompt || btn.textContent.trim());
+    });
+  }
+
+  // ── Old chat tab handlers (fallback for existing HTML elements) ──────────
+  if (elements.sendChatBtn) elements.sendChatBtn.addEventListener('click', () => sendChatMessage(elements.chatInput ? elements.chatInput.value : ''));
+  if (elements.chatInput) elements.chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChatMessage(elements.chatInput.value); });
+  if (elements.sendDrawerChatBtn) elements.sendDrawerChatBtn.addEventListener('click', () => sendChatMessage(elements.drawerChatInput ? elements.drawerChatInput.value : ''));
+  if (elements.drawerChatInput) elements.drawerChatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChatMessage(elements.drawerChatInput.value); });
+  if (elements.toggleFloatingChatBtn) elements.toggleFloatingChatBtn.addEventListener('click', () => { if (elements.floatingChatDrawer) elements.floatingChatDrawer.classList.toggle('active'); });
+  if (elements.closeChatDrawerBtn) elements.closeChatDrawerBtn.addEventListener('click', () => { if (elements.floatingChatDrawer) elements.floatingChatDrawer.classList.remove('active'); });
+
+  elements.runScannerBtn.addEventListener('click', runScanner);
+  elements.refreshAccuracyBtn.addEventListener('click', fetchAccuracyStats);
 }

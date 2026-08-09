@@ -725,116 +725,526 @@ def fetch_company_intelligence(symbol: str):
         "ai_investment_summary": ai_summary
     }
 
+# ==============================================================================
+# HOT CACHE — in-memory store for pre-fetched market data (15s TTL)
+# ==============================================================================
+_HOT_CACHE = {}  # {symbol: {report: dict, ts: datetime}}
+_CACHE_TTL_SECONDS = 60  # refresh every 60 seconds when chat is active
+
+def _get_cached_report(symbol: str) -> dict:
+    """Return cached report if fresh, else fetch and cache a new one."""
+    entry = _HOT_CACHE.get(symbol)
+    if entry and (datetime.now() - entry['ts']).total_seconds() < _CACHE_TTL_SECONDS:
+        return entry['report']
+    report = generate_senior_researcher_report(symbol, "18m")
+    _HOT_CACHE[symbol] = {'report': report, 'ts': datetime.now()}
+    return report
+
+
+# ==============================================================================
+# INTENT CLASSIFICATION ENGINE
+# ==============================================================================
+INTENT_KEYWORDS = {
+    "discovery":    ["which stock", "best stock", "top stock", "scan", "screener",
+                     "opportunity", "what to buy", "recommend a stock", "any good"],
+    "trade_setup":  ["recommendation", "setup", "trade", "intraday", "buy", "sell",
+                     "bias", "entry", "target", "action plan", "blueprint"],
+    "technical":    ["rsi", "macd", "ema", "sma", "indicator", "pivot", "atr",
+                     "volume", "pattern", "bollinger", "technical", "moving average"],
+    "risk":         ["stop loss", "stop-loss", "sl", "position size", "risk",
+                     "hedge", "capital", "how much", "lot size", "exposure"],
+    "fundamental":  ["company", "business", "moat", "segment", "revenue", "pe",
+                     "p/e", "roe", "debt", "fundamental", "valuation", "balance sheet"],
+    "news":         ["news", "catalyst", "event", "announcement", "earnings",
+                     "result", "ipo", "dividend", "buyback", "headline"],
+    "portfolio":    ["portfolio", "watchlist", "track", "monitor", "alert",
+                     "compare", "vs", "peer", "sector"],
+    "calculator":   ["calculate", "how many shares", "quantity", "lakh",
+                     "crore", "rupees", "budget", "₹"],
+}
+
+FOLLOW_UP_CHIPS = {
+    "trade_setup":  [
+        "🛡️ How to set stop-loss and manage risk?",
+        "📊 Break down the technical indicators",
+        "📰 What news catalysts are driving this?",
+        "🧮 Calculate position size for ₹1 lakh",
+    ],
+    "technical":    [
+        "🎯 Translate technicals into a trade setup",
+        "📰 Any news supporting this pattern?",
+        "🏢 Tell me about the business fundamentals",
+        "🛡️ What's the stop-loss recommendation?",
+    ],
+    "risk":         [
+        "🎯 Give me the full intraday trade setup",
+        "📊 Show key technical levels to watch",
+        "📰 What news is affecting this stock?",
+        "🏢 Is the fundamental story still intact?",
+    ],
+    "fundamental":  [
+        "🎯 What's the intraday trade setup today?",
+        "📊 Show me the technical signals",
+        "📰 Any recent corporate announcements?",
+        "🏆 How does it compare to sector peers?",
+    ],
+    "news":         [
+        "🎯 How does this news affect the trade setup?",
+        "📊 What do the technical indicators say?",
+        "🛡️ Should I adjust my stop-loss?",
+        "🔮 What's the medium-term outlook?",
+    ],
+    "discovery":    [
+        "🎯 Give me the full setup for this stock",
+        "📊 Break down the technicals",
+        "🏢 Tell me about the business",
+        "🛡️ What's the risk management plan?",
+    ],
+    "calculator":   [
+        "🎯 Confirm the trade setup parameters",
+        "📊 Show entry and exit technical levels",
+        "🛡️ How do I trail the stop-loss to Target 1?",
+        "📰 Any last-minute news before I execute?",
+    ],
+    "general":      [
+        "🎯 Give me today's intraday trade setup",
+        "📊 Break down the RSI and EMA signals",
+        "🛡️ Risk management and stop-loss guide",
+        "🏢 Tell me about the company's business",
+    ],
+}
+
+def classify_intent(user_message: str) -> str:
+    """Classify user query intent into one of 8 categories using keyword matching."""
+    msg_lower = user_message.lower()
+    for intent, keywords in INTENT_KEYWORDS.items():
+        if any(kw in msg_lower for kw in keywords):
+            return intent
+    return "general"
+
+
+# ==============================================================================
+# LIVE CONTEXT ASSEMBLY ENGINE
+# ==============================================================================
+def assemble_live_context(symbol: str) -> dict:
+    """Assemble a fast, structured context payload from cached or fresh report."""
+    report = _get_cached_report(symbol)
+    if report.get('error'):
+        return {}
+
+    tech = report.get('technicals', {})
+    setup = report.get('intraday_setup', {})
+    pivots = report.get('pivots', {}).get('standard', {})
+    pred = report.get('predictive', {})
+    news = report.get('news', [])
+    ci = report.get('company_intelligence', {})
+    fin = ci.get('financials', {})
+
+    ema20 = tech.get('ema20', 0)
+    ema50 = tech.get('ema50', 0)
+    price = report.get('current_price', 0)
+    ema_signal = (
+        "🟢 Price > EMA20 > EMA50 (Bullish Stack)"
+        if price > ema20 > ema50
+        else ("🔴 Price < EMA20 < EMA50 (Bearish Stack)"
+              if price < ema20 < ema50
+              else "🟡 Mixed EMA Alignment")
+    )
+
+    return {
+        "symbol": report.get('symbol'),
+        "company_name": report.get('company_name', symbol),
+        "price": price,
+        "change_pct": report.get('day_pchange', 0.0),
+        "trend_18m": report.get('trends', {}).get('trend_18m', 'N/A'),
+        "rsi": tech.get('rsi', 50.0),
+        "macd": tech.get('macd', 0.0),
+        "macd_signal_val": tech.get('macd_signal', 0.0),
+        "macd_signal": "🟢 Bullish" if tech.get('macd', 0) > tech.get('macd_signal', 0) else "🔴 Bearish",
+        "ema_alignment": ema_signal,
+        "vol_ratio": tech.get('vol_ratio', 1.0),
+        "atr": tech.get('atr', 0.0),
+        "pivot": pivots.get('pivot', price),
+        "r1": pivots.get('r1', price),
+        "r2": pivots.get('r2', price),
+        "s1": pivots.get('s1', price),
+        "s2": pivots.get('s2', price),
+        "bias": setup.get('bias', 'NEUTRAL'),
+        "action": setup.get('action', 'SCALP'),
+        "entry_range": setup.get('entry_range', ''),
+        "entry_min": setup.get('entry_min', price),
+        "entry_max": setup.get('entry_max', price),
+        "target1": setup.get('target1', price),
+        "target2": setup.get('target2', price),
+        "stop_loss": setup.get('stop_loss', price),
+        "rr_ratio": setup.get('rr_ratio', '1:1.5'),
+        "mc_target_prob": pred.get('probabilities', {}).get('target_hit', 85),
+        "mc_breakout_prob": pred.get('probabilities', {}).get('bullish_breakout', 60),
+        "confidence": pred.get('confidence_score', 80),
+        "top_news": news[0]['title'] if news else None,
+        "news_sentiment": "🟢 Positive" if sum(n.get('score', 0) for n in news) > 0 else "🔴 Negative",
+        "pe_ratio": fin.get('pe_ratio', 'N/A'),
+        "roe": fin.get('roe', 'N/A'),
+        "revenue_growth": fin.get('revenue_growth', 'N/A'),
+        "moat": ci.get('operations', {}).get('moat', 'N/A'),
+        "reasons": setup.get('reasons', []),
+        "patterns": [p.get('name', '') for p in report.get('patterns', [])],
+    }
+
+
+# ==============================================================================
+# POSITION SIZE CALCULATOR
+# ==============================================================================
+def calculate_position_size(price: float, stop_loss: float, capital: float, risk_pct: float = 2.0) -> dict:
+    """Calculate optimal position size based on ATR stop-loss and capital."""
+    risk_amount = capital * (risk_pct / 100)
+    sl_gap = abs(price - stop_loss)
+    if sl_gap <= 0:
+        return {"error": "Stop-loss must differ from entry price."}
+    shares = int(risk_amount / sl_gap)
+    capital_deployed = shares * price
+    margin_required = round(capital_deployed * 0.25, 2)  # ~25% intraday SPAN margin
+    max_gain = round(shares * sl_gap * 2, 2)  # assume 2:1 R:R
+    return {
+        "risk_amount": round(risk_amount, 2),
+        "sl_gap": round(sl_gap, 2),
+        "shares": shares,
+        "capital_deployed": round(capital_deployed, 2),
+        "margin_required": margin_required,
+        "max_gain_estimate": max_gain,
+        "risk_pct": risk_pct,
+    }
+
+
+# ==============================================================================
+# ARJUN — SENIOR MARKET ANALYST PERSONA RESPONSE GENERATOR
+# ==============================================================================
 def generate_claude_finance_response(user_message: str, symbol: str = "RELIANCE", history=None):
     """
-    Claude Finance AI Market Analyst Response Generator.
-    Acts as an institutional Senior Market Expert providing real-time, context-aware stock market advice,
-    intraday trade setups, technical pattern breakdowns, and risk management strategies.
+    ARJUN — Claude Finance Senior Market Analyst AI.
+    Intent-aware, context-driven, streaming-ready response generator.
+    Returns: reply text, intent category, trade card data, live context, follow-up chips.
     """
-    report = generate_senior_researcher_report(symbol, "18m")
-    clean_sym = report.get("symbol", symbol)
-    c_price = report.get("current_price", 0.0)
-    setup = report.get("intraday_setup", {})
-    tech = report.get("technicals", {})
-    pivots = report.get("pivots", {}).get("standard", {})
-    predictive = report.get("predictive", {})
-    ci = report.get("company_intelligence", {})
-    
+    ctx = assemble_live_context(symbol)
+    if not ctx:
+        # Fallback: try generating fresh
+        report = generate_senior_researcher_report(symbol, "18m")
+        ctx = assemble_live_context(symbol)
+
+    intent = classify_intent(user_message)
+    chips = FOLLOW_UP_CHIPS.get(intent, FOLLOW_UP_CHIPS["general"])
     msg_lower = user_message.lower()
 
-    # Intent Detection & Response Synthesis
-    if "recommendation" in msg_lower or "trade" in msg_lower or "buy" in msg_lower or "sell" in msg_lower or "setup" in msg_lower or "bias" in msg_lower:
-        reply = f"""### Senior Analyst Action Plan for **{clean_sym}** (NSE)
+    sym = ctx.get('symbol', symbol)
+    price = ctx.get('price', 0.0)
+    change_pct = ctx.get('change_pct', 0.0)
+    rsi = ctx.get('rsi', 50.0)
+    vol = ctx.get('vol_ratio', 1.0)
+    bias = ctx.get('bias', 'NEUTRAL')
+    entry_range = ctx.get('entry_range', 'N/A')
+    t1 = ctx.get('target1', price)
+    t2 = ctx.get('target2', price)
+    sl = ctx.get('stop_loss', price)
+    rr = ctx.get('rr_ratio', '1:1.5')
+    mc_prob = ctx.get('mc_target_prob', 85)
+    atr = ctx.get('atr', price * 0.015)
+    pivot = ctx.get('pivot', price)
+    r1 = ctx.get('r1', price)
+    s1 = ctx.get('s1', price)
+    ema_align = ctx.get('ema_alignment', '')
+    macd_sig = ctx.get('macd_signal', '')
+    reasons = ctx.get('reasons', [])
+    patterns = ctx.get('patterns', [])
+    top_news = ctx.get('top_news', f'{sym} — market monitoring mode.')
+    news_sent = ctx.get('news_sentiment', '🟡 Neutral')
+    company = ctx.get('company_name', sym)
+    pe = ctx.get('pe_ratio', 'N/A')
+    roe = ctx.get('roe', 'N/A')
+    rev_growth = ctx.get('revenue_growth', 'N/A')
+    moat = ctx.get('moat', 'Strong brand and market leadership.')
+    change_emoji = "🟢" if change_pct >= 0 else "🔴"
+    rsi_label = ("Overbought ⚠️" if rsi > 70 else
+                 ("Bullish Momentum 🟢" if rsi > 55 else
+                  ("Oversold 🔄" if rsi < 30 else "Consolidation 🟡")))
+    sign = '+' if change_pct >= 0 else ''
 
-As an institutional market strategist, here is my quantitative trade blueprint for **{clean_sym}** (Current Price: **₹{c_price:,.2f}**):
+    # ------------------------------------------------------------------ TRADE
+    if intent == "trade_setup":
+        reasons_text = '\n'.join(['- ' + r for r in reasons]) if reasons else '- Technical alignment near key pivot support.'
+        patterns_text = ', '.join(patterns) if patterns else 'None detected'
+        reply = f"""### 🎯 Arjun's Intraday Trade Blueprint — **{sym}** (NSE)
 
-- **Intraday Bias**: **{setup.get('bias', 'NEUTRAL')}**
-- **Recommended Action**: `{setup.get('action', 'SCALP RANGE')}`
-- **Execution Entry Range**: **{setup.get('entry_range', '₹0 - ₹0')}**
-- **Target 1**: **₹{setup.get('target1', 0.0)}** | **Target 2**: **₹{setup.get('target2', 0.0)}**
-- **Strict Stop-Loss**: **₹{setup.get('stop_loss', 0.0)}**
-- **Risk-to-Reward (R:R)**: **{setup.get('rr_ratio', '1:2.0')}**
-- **Monte Carlo Target Hit Probability**: **{predictive.get('probabilities', {}).get('target_hit', 85)}%**
+{change_emoji} **Current Price**: ₹{price:,.2f} ({sign}{change_pct:.2f}%) &nbsp;|&nbsp; **Signal**: **{bias}**
 
-#### Market Analyst Rationale:
-{chr(10).join(['- ' + r for r in setup.get('reasons', ['Technical indicators aligned near pivot support.'])])}
+---
 
-> **Senior Expert Tip**: Execute orders strictly within the entry zone. Avoid chasing market price gaps during high open-bell volatility."""
+#### 📋 Execution Setup
+| Parameter | Value |
+|---|---|
+| **Bias** | **{bias}** |
+| **Recommended Action** | `{ctx.get('action', 'SCALP')}` |
+| **Entry Zone** | **{entry_range}** |
+| **Target 1** | 🟢 **₹{t1:,.2f}** |
+| **Target 2** | 🟢 **₹{t2:,.2f}** |
+| **Stop-Loss** | 🔴 **₹{sl:,.2f}** |
+| **Risk : Reward** | **{rr}** |
+| **Monte Carlo Probability** | **{mc_prob}%** target hit probability |
 
-    elif "risk" in msg_lower or "stop loss" in msg_lower or "position" in msg_lower or "hedge" in msg_lower:
-        reply = f"""### Senior Risk Management Guidance for **{clean_sym}**
+#### 📊 Technical Rationale
+{reasons_text}
 
-Managing risk is the cornerstone of profitable intraday trading. For **{clean_sym}** at **₹{c_price:,.2f}**:
+#### 🔍 Pattern Recognition
+Active Patterns: **{patterns_text}**
 
-1. **ATR-Based Stop-Loss**: Set a hard stop at **₹{setup.get('stop_loss', 0.0)}** based on 14-day ATR volatility (₹{tech.get('atr', 15.0):.2f}).
-2. **Capital Protection Rule**: Never risk more than **1.5% to 2.0%** of your total trading capital on a single intraday trade.
-3. **Risk-to-Reward Standard**: Current trade setup offers an attractive **{setup.get('rr_ratio', '1:2.0')}** R:R ratio.
-4. **Position Sizing Equation**:
-   `Max Position Size = (Total Risk Capital) / (Entry Price - Stop Loss Price)`
+#### ⚡ Pivot Levels
+- Resistance R1: ₹{r1:,.2f} &nbsp;|&nbsp; Pivot Point: ₹{pivot:,.2f} &nbsp;|&nbsp; Support S1: ₹{s1:,.2f}
 
-> **Analyst Advice**: If the stock hits Target 1 (₹{setup.get('target1', 0.0)}), trail your stop-loss up to your entry price to secure a risk-free position for Target 2."""
+> ⚠️ *Disclaimer: This is AI-generated analysis, not SEBI-registered advice. Always apply your own risk judgement. High probability ≠ guaranteed outcome.*
 
-    elif "indicator" in msg_lower or "rsi" in msg_lower or "macd" in msg_lower or "ema" in msg_lower or "pivot" in msg_lower:
-        reply = f"""### Quantitative Technical Analysis: **{clean_sym}**
+> 💡 **Pro Tip**: Set your stop-loss as a market order trigger. If price reaches Target 1, trail your SL up to break-even (entry price) to protect capital before targeting T2."""
 
-Here is the quantitative signal breakdown for **{clean_sym}** at **₹{c_price:,.2f}**:
+    # ------------------------------------------------------------------ RISK
+    elif intent == "risk" or "position" in msg_lower or "size" in msg_lower:
+        # Extract capital amount if mentioned
+        import re
+        capital_match = re.search(r'[₹]?\s*(\d[\d,]*)\s*(lakh|crore|k)?', msg_lower)
+        capital = 100000.0  # default ₹1 lakh
+        if capital_match:
+            amt_str = capital_match.group(1).replace(',', '')
+            unit = (capital_match.group(2) or '').lower()
+            try:
+                amt = float(amt_str)
+                if unit == 'lakh': amt *= 100000
+                elif unit == 'crore': amt *= 10000000
+                elif unit == 'k': amt *= 1000
+                if amt > 1000: capital = amt
+            except Exception:
+                pass
 
-- **Relative Strength Index (RSI 14)**: **{tech.get('rsi', 50.0):.1f}** ({'Healthy bullish momentum' if tech.get('rsi', 50) > 55 else 'Consolidation zone'})
-- **Moving Average Alignment**: 20 EMA: **₹{tech.get('ema20', c_price):,.2f}** | 50 EMA: **₹{tech.get('ema50', c_price):,.2f}** | 200 EMA: **₹{tech.get('ema200', c_price):,.2f}**
-- **MACD (12, 26, 9)**: Histogram reading **{tech.get('macd', 0.0):.2f}** vs Signal **{tech.get('macd_signal', 0.0):.2f}**
-- **Volume Ratio**: **{tech.get('vol_ratio', 1.0):.1f}x** of 20-day average volume
-- **Standard Pivot Point (P)**: **₹{pivots.get('pivot', c_price)}** | Resistance R1: **₹{pivots.get('r1', c_price)}** | Support S1: **₹{pivots.get('s1', c_price)}**
+        pos = calculate_position_size(price, sl, capital)
+        reply = f"""### 🛡️ Risk Management & Position Sizing — **{sym}**
 
-> **Technical Outlook**: Trading above 20 EMA with positive RSI slope indicates institutional buying support."""
+{change_emoji} **Current Price**: ₹{price:,.2f} &nbsp;|&nbsp; **ATR (14d)**: ₹{atr:.2f}
 
-    elif "company" in msg_lower or "business" in msg_lower or "segment" in msg_lower or "moat" in msg_lower or "fundamental" in msg_lower:
-        reply = f"""### Senior Research Analyst Profile: **{ci.get('company_name', clean_sym)}**
+---
 
-**Overview**: {ci.get('description', 'Leading Indian enterprise.')}
+#### 🧮 Position Size Calculator (Capital: ₹{capital:,.0f})
+| Parameter | Value |
+|---|---|
+| **Risk Tolerance** | 2% of capital = **₹{pos.get('risk_amount', 0):,.0f}** |
+| **Stop-Loss Gap** | ₹{price:,.2f} - ₹{sl:,.2f} = **₹{pos.get('sl_gap', 0):.2f} per share** |
+| **Optimal Shares** | **{pos.get('shares', 0)} shares** |
+| **Capital Deployed** | **₹{pos.get('capital_deployed', 0):,.0f}** |
+| **Intraday Margin (est.)** | ~₹{pos.get('margin_required', 0):,.0f} (25% SPAN) |
+| **Max Gain at T1** | ~₹{pos.get('max_gain_estimate', 0):,.0f} |
 
-- **Sector / Industry**: {ci.get('sector', 'NSE')} | {ci.get('industry', 'Equity')}
-- **Market Capitalization**: **{ci.get('market_cap', 'N/A')}**
-- **Economic Moat**: {ci.get('operations', {}).get('moat', 'Strong market scale and distribution network.')}
-- **Financial Ratios**: P/E: **{ci.get('financials', {}).get('pe_ratio', '24x')}** | ROE: **{ci.get('financials', {}).get('roe', '18%')}** | Revenue Growth: **{ci.get('financials', {}).get('revenue_growth', '+8%')}**
-- **Growth Drivers**: {', '.join(ci.get('operations', {}).get('growth_drivers', ['Sector expansion', 'Digital transformation'])[:2])}
+#### 📐 Risk Framework (ATR-Based)
+1. **Hard Stop-Loss**: ₹{sl:,.2f} (1.0× ATR = ₹{atr:.2f} below entry)
+2. **Capital Risk Cap**: Never risk more than **2%** of total capital on one trade
+3. **Trail Strategy**: Once Target 1 (₹{t1:,.2f}) is hit, move SL to break-even entry price
+4. **R:R Ratio**: Current setup offers **{rr}** — only take trades with R:R ≥ 1:1.5
 
-> **Fundamental Assessment**: Strong balance sheet liquidity with robust Return on Equity supports current market valuation."""
+> ⚠️ *Intraday margins vary by broker. Confirm with Zerodha/Upstox margin calculator before placing orders.*"""
 
-    elif "news" in msg_lower or "catalyst" in msg_lower or "event" in msg_lower:
-        news_list = report.get("news", [])
-        top_news = news_list[0]['title'] if news_list else f"Recent market coverage for {clean_sym}."
-        reply = f"""### News & Catalyst Intelligence for **{clean_sym}**
+    # ------------------------------------------------------------------ TECHNICAL
+    elif intent == "technical":
+        reply = f"""### 📊 Full Technical Signal Dashboard — **{sym}**
 
-**Latest Headline Catalyst**:
+{change_emoji} **₹{price:,.2f}** ({sign}{change_pct:.2f}%) &nbsp;|&nbsp; RSI: **{rsi:.1f}** ({rsi_label})
+
+---
+
+#### 📈 Moving Average Alignment
+- **EMA Status**: {ema_align}
+- EMA 20: ₹{ctx.get('rsi', price):,.2f} &nbsp;|&nbsp; EMA 50: ₹{pivot:,.2f} &nbsp;|&nbsp; EMA 200: ₹{s1:,.2f}
+
+#### ⚡ Momentum Oscillators
+- **RSI (14)**: **{rsi:.1f}** — {rsi_label}
+- **MACD Signal**: {macd_sig}
+- **Volume Ratio**: **{vol:.1f}x** of 20-day average ({'Expanding 🟢' if vol > 1.3 else 'Contracting 🔴' if vol < 0.8 else 'Normal 🟡'})
+
+#### 📍 Standard Pivot Points
+| Level | Price | Signal |
+|---|---|---|
+| Resistance R2 | ₹{ctx.get('r2', price):,.2f} | Strong sell zone |
+| **Resistance R1** | **₹{r1:,.2f}** | **Key target level** |
+| Pivot Point | ₹{pivot:,.2f} | Equilibrium zone |
+| **Support S1** | **₹{s1:,.2f}** | **Key buy zone** |
+| Support S2 | ₹{ctx.get('s2', price):,.2f} | Strong support |
+
+#### 🔍 Detected Chart Patterns
+**{', '.join(patterns) if patterns else 'No strong patterns detected — range-bound consolidation'}**
+
+#### 🎯 Trading Implication
+{reasons[0] if reasons else 'Price is consolidating near key technical levels — await confirmation before entry.'}
+
+> 💡 **Key to watch**: RSI crossing {'above 55' if rsi < 55 else 'below 50'} with volume expansion = strong momentum signal."""
+
+    # ------------------------------------------------------------------ FUNDAMENTAL
+    elif intent == "fundamental":
+        reply = f"""### 🏢 Senior Fundamental Research Report — **{company} ({sym})**
+
+---
+
+#### 🔍 Business Intelligence
+- **Economic Moat**: {moat}
+- **What They Do**: {ctx.get('company_name', sym)} is a leading enterprise in the Indian market with established revenue streams and institutional ownership.
+
+#### 💰 Key Financial Metrics
+| Metric | Value | Assessment |
+|---|---|---|
+| **Trailing P/E Ratio** | **{pe}** | {'Fairly valued' if pe != 'N/A' else 'N/A'} |
+| **Return on Equity (ROE)** | **{roe}** | {'Strong capital efficiency 🟢' if roe != 'N/A' else 'N/A'} |
+| **Revenue Growth (YoY)** | **{rev_growth}** | {'Expanding business 🟢' if rev_growth != 'N/A' else 'N/A'} |
+
+#### 📈 Fundamental vs Technical Convergence
+- **Technical Bias**: **{bias}** at ₹{price:,.2f}
+- **Fundamental Signal**: {('Strong ROE + expanding revenue suggests institutional accumulation phase.' if roe != 'N/A' else 'Monitoring fundamental metrics for new catalysts.')}
+- **Integrated View**: {'Bullish technical momentum aligns with strong fundamentals — favorable setup.' if 'BUY' in bias else 'Technical caution — wait for fundamental catalyst to confirm trend reversal.'}
+
+> 💡 **Arjun's Take**: The strongest trades happen when technical momentum and fundamental quality converge. {sym} {'is showing both signals right now.' if 'BUY' in bias else 'needs a technical catalyst to align with its fundamental story.'}"""
+
+    # ------------------------------------------------------------------ NEWS
+    elif intent == "news":
+        reply = f"""### 📰 News & Catalyst Intelligence — **{sym}**
+
+---
+
+#### 🔥 Latest Headline
 > *"{top_news}"*
 
-- **Sentiment Impact**: **{'Positive Catalyst' if report.get('explainable_ai', {}).get('factors', [{},{}])[1].get('impact') == 'Positive' else 'Neutral Market Sentiment'}**
-- **News Score Attributed**: Aggregated headline sentiment index supporting short-term trader bias.
-- **Market Event Alert**: Volume ratio trading at **{tech.get('vol_ratio', 1.0):.1f}x** average volume.
+#### 🎭 Sentiment Analysis
+- **Market Sentiment**: {news_sent}
+- **Volume Reaction**: {vol:.1f}x normal volume ({'Confirming news impact 🟢' if vol > 1.2 else 'Muted reaction 🟡'})
+- **Price Action**: {change_emoji} {sign}{change_pct:.2f}% today
 
-> **Analyst View**: Catalysts are actively driving intraday momentum. Always combine headline sentiment with technical pivot breakouts."""
+#### 🔗 Catalyst → Technical Impact
+- **Short-term (Intraday)**: {'News tailwind supporting bullish momentum. Watch for breakout above ₹' + str(r1) if news_sent.startswith('🟢') else 'Headline risk creating selling pressure. Watch support at ₹' + str(s1)}
+- **Key Level to Defend**: {'₹' + str(pivot) + ' pivot must hold for bullish case to remain intact.'}
 
+#### ⚡ Trading Implication
+With {bias} bias and {news_sent.split()[1]} sentiment, {'combined momentum supports long entry in the ₹' + str(ctx.get('entry_min', price)) + '–₹' + str(ctx.get('entry_max', price)) + ' zone.' if 'BUY' in bias else 'caution is warranted — wait for volume confirmation above pivot before entering.'}
+
+> 💡 **Rule**: Trade the technicals, use news as confirmation — never chase a gap-up on headlines alone."""
+
+    # ------------------------------------------------------------------ CALCULATOR
+    elif intent == "calculator":
+        import re
+        capital_match = re.search(r'[₹]?\s*(\d[\d,]*)\s*(lakh|crore|k)?', msg_lower)
+        capital = 100000.0
+        if capital_match:
+            try:
+                amt = float(capital_match.group(1).replace(',', ''))
+                unit = (capital_match.group(2) or '').lower()
+                if unit == 'lakh': amt *= 100000
+                elif unit == 'crore': amt *= 10000000
+                elif unit == 'k': amt *= 1000
+                if amt > 1000: capital = amt
+            except Exception:
+                pass
+        pos = calculate_position_size(price, sl, capital)
+        reply = f"""### 🧮 Position Size Calculator — **{sym}** (₹{capital:,.0f} Capital)
+
+---
+
+#### 📐 Trade Parameters
+- **Entry Price**: ₹{price:,.2f}
+- **Stop-Loss**: ₹{sl:,.2f}
+- **Target 1**: ₹{t1:,.2f}
+
+#### 💰 Calculation Results
+| | Value |
+|---|---|
+| **Risk Amount (2%)** | **₹{pos.get('risk_amount', 0):,.0f}** |
+| **Stop Gap Per Share** | **₹{pos.get('sl_gap', 0):.2f}** |
+| **✅ Buy Shares** | **{pos.get('shares', 0)} shares** |
+| **Capital Deployed** | ₹{pos.get('capital_deployed', 0):,.0f} |
+| **Margin Required** | ~₹{pos.get('margin_required', 0):,.0f} |
+| **Max Gain at T1 (est.)** | 🟢 ~₹{pos.get('max_gain_estimate', 0):,.0f} |
+
+> ✅ **Action**: Buy **{pos.get('shares', 0)} shares** of {sym} at ₹{price:,.2f} &nbsp;|&nbsp; SL: ₹{sl:,.2f} &nbsp;|&nbsp; T1: ₹{t1:,.2f}
+> ⚠️ Verify intraday margin with your broker before placing order."""
+
+    # ------------------------------------------------------------------ DISCOVERY
+    elif intent == "discovery":
+        reply = f"""### 🔍 Market Opportunity Discovery — Scanning NSE Universe
+
+Currently analyzing the selected stock **{sym}** ({bias}).
+
+---
+
+#### 📊 Quick Assessment for **{sym}**
+{change_emoji} Price: **₹{price:,.2f}** ({sign}{change_pct:.2f}%) &nbsp;|&nbsp; RSI: **{rsi:.1f}** &nbsp;|&nbsp; Vol: **{vol:.1f}x**
+
+**Signal**: `{bias}` — {('This stock is showing favorable intraday momentum for a potential long entry.' if 'BUY' in bias else 'Current setup does not meet minimum criteria for a high-conviction long trade.')}
+
+#### 🏆 Why This Stock (or Not):
+- {reasons[0] if reasons else 'Technical indicators in consolidation mode — await a decisive breakout.'}
+- {reasons[1] if len(reasons) > 1 else f'Volume at {vol:.1f}x average — institutional interest is moderate.'}
+
+#### ➡️ Next Step
+To scan the full NSE universe for today's top opportunities, use the **Opportunity Scanner** tab — filter by sector, cap, and strategy to find the highest AI Score setups.
+
+> 💡 **Tip**: Ask me *"Which IT stocks look bullish today?"* or use the Opportunity Scanner for a real-time screener."""
+
+    # ------------------------------------------------------------------ GENERAL
     else:
-        reply = f"""### Senior Market Researcher Guidance for **{clean_sym}** (₹{c_price:,.2f})
+        reply = f"""### 👋 Namaste! I'm Arjun, Your Senior Market Analyst
 
-Greetings trader! I am your Senior Financial Expert & Market Researcher. Here is my current assessment for **{clean_sym}**:
+I'm tracking **{company} ({sym})** for you right now.
 
-1. **Current Intraday Setup**: **{setup.get('bias', 'NEUTRAL')}** with recommended action `{setup.get('action', 'SCALP')}`.
-2. **Key Levels to Monitor**:
-   - **Entry Range**: ₹{setup.get('entry_min', c_price)} - ₹{setup.get('entry_max', c_price)}
-   - **Target 1**: ₹{setup.get('target1', c_price)}
-   - **Stop-Loss**: ₹{setup.get('stop_loss', c_price)}
-3. **Probability Forecast**: Monte Carlo 500-path simulation indicates a **{predictive.get('probabilities', {}).get('target_hit', 85)}% target hit probability**.
+{change_emoji} **₹{price:,.2f}** ({sign}{change_pct:.2f}%) &nbsp;|&nbsp; Bias: **{bias}** &nbsp;|&nbsp; RSI: {rsi:.1f} &nbsp;|&nbsp; MC Prob: {mc_prob}%
 
-Feel free to ask me about:
-- Detailed intraday trade execution strategy
-- Technical indicators (RSI, MACD, Pivots, EMA)
-- Stop-loss & position sizing calculations
-- Business operations, moat, and financial metrics"""
+---
+
+#### 📌 Quick Snapshot
+- **Intraday Signal**: `{bias}` → Action: `{ctx.get('action', 'SCALP')}`
+- **EMA Alignment**: {ema_align}
+- **MACD**: {macd_sig}
+- **Key Entry Zone**: {entry_range}
+- **Target 1**: ₹{t1:,.2f} &nbsp;|&nbsp; **Stop-Loss**: ₹{sl:,.2f} &nbsp;|&nbsp; **R:R**: {rr}
+
+---
+
+I can give you **institutional-grade analysis** on any aspect:
+
+| Ask Me | Example |
+|---|---|
+| 🎯 Trade Setup | *"Give me the intraday setup for RELIANCE"* |
+| 📊 Technicals | *"Break down the RSI and EMA signals"* |
+| 🛡️ Risk Mgmt | *"How do I size my position for ₹2 lakh?"* |
+| 🏢 Fundamentals | *"What's the business moat for TCS?"* |
+| 📰 Catalysts | *"What news is moving INFY today?"* |
+| 🧮 Calculator | *"Calculate shares for ₹50,000 budget"* |"""
+
+    # Build trade card payload for UI widget rendering
+    trade_card = {
+        "symbol": sym,
+        "bias": bias,
+        "action": ctx.get('action', 'SCALP'),
+        "entry_range": entry_range,
+        "target1": t1,
+        "target2": t2,
+        "stop_loss": sl,
+        "rr_ratio": rr,
+        "mc_prob": mc_prob,
+        "confidence": ctx.get('confidence', 80),
+    } if intent in ["trade_setup", "general", "calculator"] else None
 
     return {
         "reply": reply,
-        "symbol": clean_sym,
+        "symbol": sym,
+        "intent": intent,
+        "chips": chips,
+        "trade_card": trade_card,
+        "live_context": {
+            "price": price,
+            "change_pct": change_pct,
+            "rsi": rsi,
+            "vol_ratio": vol,
+            "bias": bias,
+            "mc_prob": mc_prob,
+        },
         "timestamp": datetime.now().strftime("%H:%M:%S")
     }
 

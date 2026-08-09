@@ -417,43 +417,69 @@
       </div>
     </main>
 
-    <!-- VIEW 3: CLAUDE AI ANALYST CHATBOT VIEW -->
+    <!-- VIEW 3: ARJUN — STREAMING AI MARKET ANALYST CHAT -->
     <main id="viewChat" class="tab-view">
-      <div class="chat-main-container">
-        <div class="chat-header-strip">
-          <div class="chat-analyst-info">
-            <div class="analyst-avatar">
-              <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
-            </div>
-            <div>
-              <h2>Claude Finance AI Market Analyst</h2>
-              <p>Senior Financial Expert & Intraday Quantitative Strategist</p>
-            </div>
+      <div style="height:100%; display:flex; flex-direction:column; max-width:860px; margin:0 auto; width:100%; padding:16px 0;">
+
+        <!-- Chat Header -->
+        <div class="chat-drawer-header" style="position:relative; border-radius:12px; margin-bottom:10px; cursor:default;">
+          <div class="arjun-avatar">🤖</div>
+          <div class="arjun-info">
+            <div class="arjun-name">Arjun &mdash; Senior Market Analyst AI</div>
+            <div class="arjun-status"><span class="status-dot"></span> Live &bull; NSE Market Expert &bull; Quantitative Strategist</div>
           </div>
-          <div class="active-stock-pill" id="chatActiveStockPill">Context: RELIANCE.NS</div>
-        </div>
-
-        <div class="quick-prompts-bar">
-          <span class="prompt-chip" onclick="sendQuickPrompt('What is your intraday trade recommendation for this stock today?')">🎯 Trade Recommendation</span>
-          <span class="prompt-chip" onclick="sendQuickPrompt('What is the stop-loss and risk management strategy for this setup?')">🛡️ Risk & Stop Loss</span>
-          <span class="prompt-chip" onclick="sendQuickPrompt('Explain the RSI, MACD, and EMA technical signals for this stock.')">📊 Technical Breakdown</span>
-          <span class="prompt-chip" onclick="sendQuickPrompt('What are the key business drivers and moat for this company?')">🏢 Company & Moat</span>
-          <span class="prompt-chip" onclick="sendQuickPrompt('How are recent news headlines affecting the stock sentiment?')">📰 Catalyst Impact</span>
-        </div>
-
-        <div id="chatMessages" class="chat-messages-box">
-          <div class="chat-msg assistant">
-            <div class="msg-avatar">AI</div>
-            <div class="msg-content">
-              Welcome trader! I am <strong>Claude Finance AI</strong>, your Senior Market Researcher and quantitative strategist. Select any stock and ask me about intraday setups, target probabilities, risk-to-reward ratios, or fundamental moats!
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="chat-context-badge" id="chatActiveStockPill">
+              <span class="ctx-dot"></span>
+              <span id="chatContextSym">RELIANCE</span>
             </div>
           </div>
         </div>
 
-        <div class="chat-input-container">
-          <input type="text" id="chatInput" placeholder="Ask Claude Finance Analyst about setups, stop-loss, indicators, or market advice..." autocomplete="off">
-          <button id="sendChatBtn" class="primary-btn">Send Query</button>
+        <!-- Quick Prompt Bar -->
+        <div class="followup-chips-row" style="margin-bottom:8px;">
+          <button class="followup-chip" onclick="sendQuickPrompt('Give me the intraday trade setup and entry plan')">🎯 Trade Setup</button>
+          <button class="followup-chip" onclick="sendQuickPrompt('Break down the RSI, MACD, and EMA technical signals')">📊 Technicals</button>
+          <button class="followup-chip" onclick="sendQuickPrompt('What is the stop-loss and risk management plan?')">🛡️ Risk &amp; SL</button>
+          <button class="followup-chip" onclick="sendQuickPrompt('Calculate position size for ₹1 lakh capital')">🧮 Position Size</button>
+          <button class="followup-chip" onclick="sendQuickPrompt('What news catalysts are affecting this stock?')">📰 Catalysts</button>
+          <button class="followup-chip" onclick="sendQuickPrompt('Tell me about the business moat and fundamentals')">🏢 Fundamentals</button>
         </div>
+
+        <!-- Messages Body -->
+        <div id="chatMessagesBody" class="chat-messages-body" style="flex:1; background:var(--bg-card); border:1px solid var(--border-color); border-radius:12px; padding:16px; overflow-y:auto; min-height:380px;">
+
+          <!-- Welcome Screen -->
+          <div id="chatWelcomeScreen" class="chat-welcome">
+            <div class="welcome-avatar">🤖</div>
+            <div class="welcome-title">Namaste! I'm Arjun</div>
+            <div class="welcome-sub">Your Senior Market Analyst with 18 years of NSE trading experience. Ask me anything — I'll give you institutional-grade analysis.</div>
+            <div class="welcome-prompts">
+              <button class="welcome-prompt" data-prompt="Give me the full intraday trade blueprint for RELIANCE">
+                🎯 &ldquo;Give me the full intraday trade blueprint for RELIANCE&rdquo;
+              </button>
+              <button class="welcome-prompt" data-prompt="What is the stop-loss and how do I size my position for ₹2 lakh?">
+                🛡️ &ldquo;What is the stop-loss and how do I size my position for ₹2 lakh?&rdquo;
+              </button>
+              <button class="welcome-prompt" data-prompt="Break down the RSI and EMA technical signals for TCS">
+                📊 &ldquo;Break down the RSI and EMA technical signals for TCS&rdquo;
+              </button>
+              <button class="welcome-prompt" data-prompt="What news catalysts are moving INFY today?">
+                📰 &ldquo;What news catalysts are moving INFY today?&rdquo;
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Input Area -->
+        <div class="chat-input-area" style="border-radius:0 0 12px 12px; border:1px solid var(--border-color); border-top:none; background:var(--bg-card);">
+          <div class="chat-input-wrapper">
+            <textarea id="chatInputField" placeholder="Ask Arjun about trade setups, stop-loss, position sizing, fundamentals..." rows="1"></textarea>
+          </div>
+          <button id="chatSendBtn" class="chat-send-btn" title="Send message">➤</button>
+        </div>
+
       </div>
     </main>
 
@@ -695,12 +721,48 @@
         </div>
       </div>
 
-      <div class="drawer-input-row">
-        <input type="text" id="drawerChatInput" placeholder="Ask expert advice..." autocomplete="off">
-        <button id="sendDrawerChatBtn" class="primary-btn sm">Send</button>
+
+  <!-- ── ARJUN CHATBOT FLOATING DRAWER ──────────────────────────────── -->
+  <div id="chatbotDrawer" class="chatbot-drawer hidden">
+    <div class="chat-drawer-header" id="chatDrawerHeader">
+      <div class="arjun-avatar">🤖</div>
+      <div class="arjun-info">
+        <div class="arjun-name">Arjun — Market Analyst AI</div>
+        <div class="arjun-status"><span class="status-dot"></span> Senior NSE Quantitative Strategist</div>
+      </div>
+      <div class="chat-header-actions">
+        <button class="chat-action-btn" id="chatDrawerCloseBtn" title="Close">✕</button>
       </div>
     </div>
+
+    <div class="chat-messages-body" id="chatMessagesBody">
+      <div id="chatWelcomeScreen" class="chat-welcome">
+        <div class="welcome-avatar">🤖</div>
+        <div class="welcome-title">Namaste! I'm Arjun</div>
+        <div class="welcome-sub">Your Senior Market Analyst. Ask me about trade setups, stop-loss, or fundamentals for any NSE stock.</div>
+        <div class="welcome-prompts">
+          <button class="welcome-prompt" data-prompt="Give me the intraday trade setup">🎯 Give me the intraday trade setup</button>
+          <button class="welcome-prompt" data-prompt="Break down the RSI and EMA signals">📊 Break down the RSI and EMA signals</button>
+          <button class="welcome-prompt" data-prompt="How do I size my position for ₹1 lakh?">🛡️ How do I size my position for ₹1 lakh?</button>
+          <button class="welcome-prompt" data-prompt="What news is moving this stock today?">📰 What news is moving this stock today?</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-input-area">
+      <div class="chat-input-wrapper">
+        <textarea id="chatInputField" placeholder="Ask Arjun anything about this stock..." rows="1"></textarea>
+      </div>
+      <button id="chatSendBtn" class="chat-send-btn">➤</button>
+    </div>
   </div>
+
+  <!-- ── FAB TRIGGER BUTTON ─────────────────────────────────────────── -->
+  <button class="chat-trigger-fab" id="chatFabTrigger" title="Ask Arjun — Market Analyst AI">
+    🤖
+    <span class="fab-badge">AI</span>
+  </button>
+
 
   <script src="app.js"></script>
 </body>
